@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title><%= title %></title>
+  <link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+
+<body>
+  <h1><a href="/"><%= title %></a></h1>
+  <p>Welcome to <%= title %></p>
+  <form action="/home" method="POST">
+    <table>
+      <tbody>
+        <tr>
+          <td>Usuário:</td>
+          <td><input type="text" name="user" value="claudio"></td>
+        </tr>
+        <tr>
+          <td>Senha:</td>
+          <td><input type="password" name="pass" value="123"></td>
+        </tr>
+        <tr>
+          <td colspan="2" style="text-align: right;"><input type="submit" value="Login"></td>
+        </tr>
+      </tbody>
+    </table>
+  </form>
+</body>
+
+</html>

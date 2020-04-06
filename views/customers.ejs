@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title><%= title %></title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+</head>
+
+<body>
+    <h1><a href="/home"><%= title %></a></h1>
+    <p>Welcome to <%= title %></p>
+    <% if (!docs || docs.length == 0) { %>
+    <p>Nenhum cliente cadastrado.</p>
+    <% } else { docs.forEach(function(customer) { %>
+    <p>NOME: <%= customer.nome %></p>
+    <p>IDADE: <%= customer.idade %></p>
+    <p>UF: <%= customer.uf %></p>
+    <% })} %>
+</body>
+
+</html>
