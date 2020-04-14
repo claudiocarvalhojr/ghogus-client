@@ -6,13 +6,22 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "bcrypt-nodejs": "0.0.3",
+    "connect-flash": "^0.1.1",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
+    "dotenv-safe": "^8.2.0",
     "ejs": "~2.6.1",
     "express": "~4.16.1",
     "express-session": "^1.17.0",
+    "http": "0.0.1-security",
     "http-errors": "~1.6.3",
+    "https": "^1.0.0",
+    "mogoose": "0.0.1-security",
+    "mongoose": "^5.9.7",
     "morgan": "~1.9.1",
+    "passport": "^0.4.1",
+    "passport-local": "^1.0.0",
     "request": "^2.88.2"
   }
 }

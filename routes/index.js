@@ -1,92 +1,115 @@
-var express = require('express')
-var session = require('express-session')
-var request = require('request')
-var router = express.Router()
+const express = require('express')
+const request = require('request')
+const router = express.Router()
 
-const apigateway = 'http://localhost:3000'
-const appTitle = 'Reference Store'
+const APP_TITLE = process.env.APP_TITLE
+const API_GATEWAY = process.env.API_GATEWAY
 
-router.use(session({
-  secret: '2C44-4D44-WppQ38S',
-  resave: true,
-  saveUninitialized: true
-}))
+var isAuthenticated = (req, res, next) => {
+  if (req.isAuthenticated())
+    return next();
+  res.redirect('/');
+}
 
-/* INDEX */
-router.get('/', isNotAuthenticated, function (req, res, next) {
-  console.log('client/index...')
-  res.render('index', {
-    title: appTitle
+var isNotAuthenticated = (req, res, next) => {
+  // log('client/isNotTokenValid...')
+  if (!req.isAuthenticated())
+    return next();
+  res.redirect('/home');
+}
+
+var isTokenValid = (req, res, next) => {
+  // log('client/isTokenValid...')
+  request.get(API_GATEWAY + '/check?token=' + req.session.token, (error, result) => {
+    if (error) { return console.log('ERROR: ' + error) }
+    if (JSON.parse(result.body).auth) { return next() }
+    // req.session.token = null
+    // req.logout();
+    // res.redirect('/')
+    res.redirect('/logout')
   })
-})
+}
 
-/* HOME */
-router.get('/home', isAuthenticated, function (req, res, next) {
-  console.log('client get/home...')
-  res.render('home', {
-    title: appTitle,
-    name: req.session.user
-  })
-})
+function log(message) {
+  var data = new Date()
+  console.log('****************************************')
+  console.log(data.toLocaleDateString() + ' ' + data.toLocaleTimeString() + ' - ' + message)
+  // console.log('****************************************')
+}
 
-/* COONTATO */
-router.get('/contato', function (req, res, next) {
-  console.log('client/contact...')
-  res.render('contact', {
-    title: appTitle,
-    name: req.session.user
-  })
-})
+module.exports = (passport) => {
 
-/* CLIENTES */
-router.get('/clientes', isAuthenticated, function (req, res, next) {
-  console.log('client/customers...')
-  request.get(apigateway + '/clientes?token=' + req.session.token, (err, result) => {
-    if (err) { return console.log(err) }
-    res.render('customers', {
-      title: appTitle,
-      docs: JSON.parse(result.body)
+  /* INDEX */
+  router.get('/', isNotAuthenticated, (req, res, next) => {
+    log('client/index... ')
+    res.render('index', {
+      title: APP_TITLE, message: req.flash('message')
     })
   })
-})
 
-/* LOGIN */
-router.post('/home', (req, res, next) => {
-  console.log('client post/home...')
-  let user = req.body.user
-  let pass = req.body.pass
-  request.post(apigateway + '/login', {
-    json: {
-      'user': user,
-      'pass': pass
+  /* LOGIN */
+  router.post('/login', passport.authenticate('login', {
+    // successRedirect: '/home',
+    failureRedirect: '/',
+    failureFlash: true
+  }),
+    (req, res) => {
+      log('client/login...')
+      request.post(API_GATEWAY + '/login', {
+        json: {
+          'id': req.user._id,
+          'user': req.user.username
+        }
+      }, (error, response, body) => {
+        if (error) { return console.log('ERROR: ' + error) }
+        if (response.body.auth) {
+          req.session.token = response.body.token
+          res.redirect('/home')
+        }
+      })
     }
-  }, (err, response, body) => {
-    if (err) { return console.log(err) }
-    req.session.token = response.body.token
-    req.session.user = response.body.user
-    if (response.body.auth) {
-      return res.redirect('/home')
-    }
-    res.redirect('/')
-  })
-})
+  );
 
-function isNotAuthenticated(req, res, next) {
-  console.log('\nisNotAuthentication...')
-  request.get(apigateway + '/check?token=' + req.session.token, (err, result) => {
-    if (err) { return console.log(err) }
-    if (!JSON.parse(result.body).auth) { next() } 
-    else { res.redirect('/home') }
+  /* HOME */
+  router.get('/home', isAuthenticated, isTokenValid, (req, res, next) => {
+    log('client/home...')
+    res.render('home', {
+      title: APP_TITLE,
+      name: req.user.firstName + ' ' + req.user.lastName
+    })
   })
+
+  /* CONTATO */
+  router.get('/contato', (req, res, next) => {
+    log('client/contact...')
+    res.render('contact', {
+      title: APP_TITLE,
+      name: req.session.user
+    })
+  })
+
+  /* LOGOUT */
+  router.get('/logout', isAuthenticated, (req, res, next) => {
+    log('client/logout...')
+    request.get(API_GATEWAY + '/logout', (error, result) => {
+      if (error) { return console.log('ERROR: ' + error) }
+      req.session.token = JSON.parse(result.body).token
+      req.logout();
+      res.redirect('/');
+    })
+  })
+
+  /* MY-ACCOUNT */
+  router.get('/minha-conta', isAuthenticated, isTokenValid, (req, res, next) => {
+    log('client/my-account...')
+    request.get(API_GATEWAY + '/clientes?token=' + req.session.token, (error, result) => {
+      if (error) { return console.log('ERROR: ' + error) }
+      res.render('my-account', {
+        title: APP_TITLE,
+        docs: JSON.parse(result.body)
+      })
+    })
+  })
+
+  return router
 }
-
-function isAuthenticated(req, res, next) {
-  console.log('\nisAuthentication...')
-  request.get(apigateway + '/check?token=' + req.session.token, (err, result) => {
-    if (err) { return console.log(err) }
-    if (JSON.parse(result.body).auth) { next() }
-    else { res.redirect('/') }
-  })
-}
-
-module.exports = router

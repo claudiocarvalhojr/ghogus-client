@@ -7,13 +7,13 @@
 </head>
 
 <body>
-    <h1><a href="/home"><%= title %></a></h1>
-    <p>Welcome to <%= title %></p>
+    <% include header.ejs %>
+    <p><a href="/home">Home</a> | <a href="/logout">Sair</a></p>
     <% if (!docs || docs.length == 0) { %>
     <p>Nenhum cliente cadastrado.</p>
     <% } else { docs.forEach(function(customer) { %>
-    <p>NOME: <%= customer.nome %></p>
-    <p>IDADE: <%= customer.idade %></p>
+    <p>Nome: <%= customer.nome %></p>
+    <p>Idade: <%= customer.idade %></p>
     <p>UF: <%= customer.uf %></p>
     <% })} %>
 </body>

@@ -7,9 +7,9 @@
 </head>
 
 <body>
-    <h1><a href="/"><%= title %></a></h1>
-    <p>Welcome to <%= title %></p>
-    <p>Bem vindo <%= name %>, listar <a href="/clientes">clientes</a></p>
+    <% include header.ejs %>
+    <p><a href="/minha-conta">Minha Conta</a> | <a href="/logout">Sair</a></p>
+    <p>Olá <b><%= name %>!</b></p>
 </body>
 
 </html>
