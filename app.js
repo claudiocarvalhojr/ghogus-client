@@ -48,8 +48,12 @@ app.use(flash());
 var initPassport = require('./passport/init');
 initPassport(passport);
 
-var indexRouter = require('./routes/index')(passport);
-app.use('/', indexRouter);
+var index = require('./routes/index')(passport);
+var register = require('./routes/register')(passport);
+var contact = require('./routes/contact');
+app.use('/', index);
+app.use('/registro', register)
+app.use('/contato', contact)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -64,7 +68,8 @@ app.use(function (err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error', {
+  res.render('index', {
+    page: 'error',
     title: APP_TITLE
   });
 });

@@ -7,15 +7,15 @@ const API_GATEWAY = process.env.API_GATEWAY
 
 var isAuthenticated = (req, res, next) => {
   if (req.isAuthenticated())
-    return next();
-  res.redirect('/');
+    return next()
+  res.redirect('/')
 }
 
 var isNotAuthenticated = (req, res, next) => {
   // log('client/isNotTokenValid...')
   if (!req.isAuthenticated())
-    return next();
-  res.redirect('/home');
+    return next()
+  res.redirect('/home')
 }
 
 var isTokenValid = (req, res, next) => {
@@ -24,7 +24,7 @@ var isTokenValid = (req, res, next) => {
     if (error) { return console.log('ERROR: ' + error) }
     if (JSON.parse(result.body).auth) { return next() }
     // req.session.token = null
-    // req.logout();
+    // req.logout()
     // res.redirect('/')
     res.redirect('/logout')
   })
@@ -43,7 +43,9 @@ module.exports = (passport) => {
   router.get('/', isNotAuthenticated, (req, res, next) => {
     log('client/index... ')
     res.render('index', {
-      title: APP_TITLE, message: req.flash('message')
+      page: 'login',
+      title: APP_TITLE,
+      message: req.flash('message')
     })
   })
 
@@ -68,23 +70,15 @@ module.exports = (passport) => {
         }
       })
     }
-  );
+  )
 
   /* HOME */
   router.get('/home', isAuthenticated, isTokenValid, (req, res, next) => {
     log('client/home...')
-    res.render('home', {
+    res.render('index', {
+      page: 'home',
       title: APP_TITLE,
       name: req.user.firstName + ' ' + req.user.lastName
-    })
-  })
-
-  /* CONTATO */
-  router.get('/contato', (req, res, next) => {
-    log('client/contact...')
-    res.render('contact', {
-      title: APP_TITLE,
-      name: req.session.user
     })
   })
 
@@ -94,17 +88,27 @@ module.exports = (passport) => {
     request.get(API_GATEWAY + '/logout', (error, result) => {
       if (error) { return console.log('ERROR: ' + error) }
       req.session.token = JSON.parse(result.body).token
-      req.logout();
-      res.redirect('/');
+      req.logout()
+      res.redirect('/')
     })
   })
+
+  /* REGISTER */
+  // router.get('/registro', (req, res) => {
+  //   log('client/register... ')
+  //   res.render('register', {
+  //     title: APP_TITLE,
+  //     message: req.flash('message')
+  //   })
+  // })
 
   /* MY-ACCOUNT */
   router.get('/minha-conta', isAuthenticated, isTokenValid, (req, res, next) => {
     log('client/my-account...')
     request.get(API_GATEWAY + '/clientes?token=' + req.session.token, (error, result) => {
       if (error) { return console.log('ERROR: ' + error) }
-      res.render('my-account', {
+      res.render('index', {
+        page: 'my-account',
         title: APP_TITLE,
         docs: JSON.parse(result.body)
       })

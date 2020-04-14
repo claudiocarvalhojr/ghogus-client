@@ -3,44 +3,30 @@
 
 <head>
   <title><%= title %></title>
-  <link rel='stylesheet' href='/stylesheets/style.css' />
+  <!-- <link rel='stylesheet' href='/stylesheets/style.css' /> -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
 </head>
 
 <body>
-  <% include header.ejs %>
-  <table>
-    <tbody>
-      <form action="/login" method="POST">
-        <tr>
-          <td>Usuário:</td>
-          <td><input type="text" name="username" value="ghogus"></td>
-        </tr>
-        <tr>
-          <td>Senha:</td>
-          <td><input type="password" name="password" value="1rwbeKKw1"></td>
-        </tr>
-        <tr>
-          <td colspan="2" style="text-align: right;"><input type="submit" value="Login"></td>
-        </tr>
-      </form>
-    </tbody>
-    <tfoot>
-      <tr>
-        <td colspan="2" style="text-align: center;">
-          <a href="#">Esqueci minha senha</a> | <a href="#">Registrar-se</a>
-        </td>
-      </tr>
-      <tr>
-        <td colspan="2" style="text-align: center;">
-          <% if(message) { %>
-          <p>
-            <label style="color:Red"><b><%= message %></b></label>
-          </p>
-          <%}%>
-        </td>
-      </tr>
-    </tfoot>
-  </table>
+  <div class="container">
+    
+    <div class="row col-md-12"><% include header.ejs %></div>
+
+    <div class="row col-md-12">
+      <div class="col-md-3"></div>
+      <div class="col-md-6"><%- include(page) %></div>
+      <div class="col-md-3"></div>
+    </div>
+
+  </div>
+  
+  <script src="/js/jquery-3.4.1.min.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <script src="/js/scripts.js"></script>
+
 </body>
 
 </html>
