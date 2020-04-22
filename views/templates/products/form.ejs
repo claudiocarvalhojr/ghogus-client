@@ -1,0 +1,78 @@
+<div class="form-product">
+
+    <div>
+        <% if(message) { %>
+        <p><label class="message"><b><%= message %></b></label></p>
+        <% } %>
+    </div>
+
+    <form action="/produtos/save" method="POST">
+
+        <div class="form-group form-row">
+            <label for="sku">SKU: </label>
+            <input type="text" class="form-control" id="sku" name="sku" placeholder="Digite o SKU" value="1148100020003U" required>
+        </div>
+
+        <div class="form-group form-row">
+            <label for="title">Título: </label>
+            <input type="text" class="form-control" id="title" name="title" placeholder="Digite o título"
+                value="Tênis ZZ Easy Slip On Elástico Rose Blush e Dark Romance" required>
+        </div>
+
+        <div class="form-group form-row">
+            <label for="description">Descrição: </label>
+            <textarea class="form-control" id="description" name="description" placeholder="Digite a descrição"
+                required>Tênis slip on de salto rasteiro em couro rosa. O modelo tem bico redondo e sola baixa emborrachada rosa, texturizada na parte frontal e com detalhe em costura pesponto no contorno superior. Traz elástico largo da cor do sapato sobre o cabedal com gáspea alta e detalhe no calcanhar.
+                
+            Porque Apostar
+
+            Básico, mas com um toque extra de estilo, o modelo slip on surge renovado com aplicação de elástico largo sobre o cabedal, que confere charme e auxilia o calce. Aliado da rotina agitada da mulher contemporânea, oferece versatilidade de looks e composições. Combine com jeans e mochila para uma produção despojada, ou com itens em alfaiataria para um visual fashion.</textarea>
+        </div>
+
+        <div class="form-group form-row form-inline">
+            <div class="form-group col-md-6 form-inline">
+                <label for="price">Preço R$: </label>
+                <input type="text" class="form-control" id="price" name="price" placeholder="Digite o preço" value="0,00" required
+                    min="0">
+            </div>
+            <div class="form-group col-md-6 form-inline">
+                <label for="discount">Desconto em %: </label>
+                <input type="number" class="form-control" id="discount" name="discount" placeholder="Digite o desconto" value="0"
+                    min="0" max="100">
+            </div>
+        </div>
+
+        <div class="form-group form-row form-inline">
+            <div class="form-group col-md-4 form-inline">
+                <input type="checkbox" class="form-check-input" id="online" name="online">
+                <label class="form-check-label" for="online">Online</label>
+            </div>
+            <div class="form-group col-md-8 form-inline">
+                <label for="onlineDate">Online a partir de: </label>
+                <input type="datetime-local" class="form-control" id="onlineDate" name="onlineDate" required>
+            </div>
+        </div>
+
+        <div class="form-group form-row form-inline">
+            <div class="form-group col-md-4 form-inline">
+                <input type="checkbox" class="form-check-input" id="saleable" name="saleable">
+                <label class="form-check-label" for="saleable">Saleable</label>
+            </div>
+            <div class="form-group col-md-8 form-inline">
+                <label for="saleableDate">Saleable a patir de: </label>
+                <input type="datetime-local" class="form-control" id="saleableDate" name="saleableDate" required>
+            </div>
+        </div>
+
+        <div class="form-group form-row">
+            <label for="image">Título: </label>
+            <input type="text" class="form-control" id="image" name="image" placeholder="Digite o nome da imagem"
+                value="1148100020003U-01.jpg" required>
+        </div>
+
+        <div class="form-group" style="padding-top: 20px;">
+            <input type="submit" id="btnNewProduct" value="SALVAR" class="btn btn-md btn-outline-secondary">
+        </div>
+
+    </form>
+</div>

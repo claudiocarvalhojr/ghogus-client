@@ -1,59 +1,47 @@
-var LocalStrategy = require('passport-local').Strategy;
-var User = require('../models/user');
-var bCrypt = require('bcrypt-nodejs');
+let LocalStrategy = require('passport-local').Strategy;
+let User = require('../models/user');
+let bCrypt = require('bcrypt-nodejs');
 
 module.exports = (passport) => {
-
     passport.use('signup', new LocalStrategy({
-        passReqToCallback: true // allows us to pass back the entire request to the callback
+        usernameField: 'email',
+        // passwordField: 'password',
+        passReqToCallback: true
     },
-        (req, username, password, done) => {
-
+        (req, email, password, done) => {
             findOrCreateUser = () => {
-                // find a user in Mongo with provided username
-                User.findOne({ 'username': username }, (err, user) => {
-                    // In case of any error, return using the done method
+                User.findOne({ 'email': email }, (err, user) => {
                     if (err) {
-                        console.log('Erro no registro: ' + err);
-                        return done(err);
+                        return done(err, req.flash('message', 'Erro ao tentar criar o usuário!'));
                     }
-                    // already exists
                     if (user) {
-                        console.log('Já existe usuário com o nome: ' + username);
-                        return done(null, false, req.flash('message', 'Usuário já existe'));
+                        return done(null, false, req.flash('message', 'Este e-mail já esta sendo utilizado!'));
                     } else {
-                        // if there is no user with that email
-                        // create the user
-                        var newUser = new User();
-
-                        // set the user's local credentials
-                        newUser.username = username;
+                        let newUser = new User();
+                        let data = new Date()
+                        newUser.email = email;
                         newUser.password = createHash(password);
-                        newUser.email = req.param('email');
-                        newUser.firstName = req.param('firstName');
-                        newUser.lastName = req.param('lastName');
-
-                        // save the user
+                        newUser.birthDate = req.body.birthDate;
+                        newUser.phoneNumber = req.body.phoneNumber;
+                        newUser.firstName = req.body.firstName;
+                        newUser.lastName = req.body.lastName;
+                        newUser.registerDate = data.toLocaleString();
+                        newUser.cpfCnpj = null;
+                        newUser.typePerson = null;
+                        newUser.adresses = null;
                         newUser.save((err) => {
                             if (err) {
-                                console.log('Erro ao salvar usuário: ' + err);
                                 throw err;
                             }
-                            console.log('Registro do usuário realizado com sucesso!');
-                            return done(null, newUser);
+                            return done(null, newUser, req.flash('message', 'Usuário cadastrado com sucesso!'));
                         });
                     }
                 });
             };
-            // Delay the execution of findOrCreateUser and execute the method
-            // in the next tick of the event loop
             process.nextTick(findOrCreateUser);
         })
     );
-
-    // Generates hash using bCrypt
-    var createHash = (password) => {
+    let createHash = (password) => {
         return bCrypt.hashSync(password, bCrypt.genSaltSync(10), null);
     }
-
 }

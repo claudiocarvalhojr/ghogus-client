@@ -5,6 +5,7 @@ var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
+var cookie = require('cookie');
 var logger = require('morgan');
 
 var dbConfig = require('./db');
@@ -30,11 +31,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 var passport = require('passport');
 var session = require('express-session');
 app.use(session({
-  // store: new MongoStore({
-  //   db: global.db,
-  //   ttl: 30 * 60 // = 30 minutos de sessão
-  // }),
   secret: process.env.APP_SECRET,
+  cookie: { maxAge: 1000 * 60 * 60 },
   resave: false,
   saveUninitialized: false
 }));
@@ -49,11 +47,13 @@ var initPassport = require('./passport/init');
 initPassport(passport);
 
 var index = require('./routes/index')(passport);
-var register = require('./routes/register')(passport);
-var contact = require('./routes/contact');
+var products = require('./routes/products')(passport);
+// var register = require('./routes/_register')(passport);
+// var contact = require('./routes/_contact');
 app.use('/', index);
-app.use('/registro', register)
-app.use('/contato', contact)
+app.use('/', products)
+// app.use('/', register)
+// app.use('/', contact)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -68,10 +68,19 @@ app.use(function (err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('index', {
-    page: 'error',
-    title: APP_TITLE
-  });
+  if (req.isAuthenticated()) {
+    res.render('index', {
+      page: './templates/structure/not_found',
+      menu: 'full',
+      title: APP_TITLE
+    });
+  } else {
+    res.render('index', {
+      page: './templates/structure/not_found',
+      menu: 'small',
+      title: APP_TITLE
+    });
+  }
 });
 
 module.exports = app

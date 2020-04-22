@@ -1,0 +1,5 @@
+<% if (!docs || docs.length == 0) { %>
+    <p>Nenhum cliente cadastrado!</p>
+<% } else { docs.forEach(function(customer) { %>
+    <p>ID: <%= customer._id %> | Nome: <%= customer.nome %> | Idade: <%= customer.idade %> | UF: <%= customer.uf %></p>
+<% })} %>

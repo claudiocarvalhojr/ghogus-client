@@ -1,8 +1,79 @@
-body {color: dimgray; text-align: center; padding: 0 50px; font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;}
-form {width: 100%; text-align: center;}
-table {width: 50%;}
-.table-login {border:none !important;}
-.table-login td {border:none !important;}
+/* body { color: dimgray; text-align: center; font: 14px "Lucida Grande", Helvetica, Arial, sans-serif; } */
+body { background-color: #f8f9fa !important; font: 12px "Lucida Grande", Helvetica, Arial, sans-serif !important; }
+.container { width: 100% !important; margin: 0 !important; padding: 0 !important; }
+.row { width: 100% !important; margin: 0 !important; padding: 0 !important;  }
+.header { width: 100%; margin: 0; padding: 0; background-color: #ffffff; }
+.content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; border-top: 0.005em solid #ccc; background-color: #ffffff; text-align: center; }
+/* .content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; background-color: #ffffff; text-align: center; } */
+.footer { width: 100%; position: relative; bottom: 0; min-height: 60px; line-height: 60px; color: #4f4f4f; background-color: #1c1c1c; text-align: center; }
+.login { width: 100%; left: 0; position: relative; text-align: center; padding: 0 30%; }
+.form-register { width: 100%; left: 0; position: relative; text-align: center; padding: 0 30%; }
+.form-product { width: 100%; left: 0; position: relative; padding: 0 30%; }
+/* .login .form-control { width: 100%; } */
+.message { color:Red; padding: 20px 0; }
+.brand-site a { color: lightcoral !important; font-weight: bold; }
+/* .container { width: 100% !important; padding: 0 !important; margin: 0 !important; } */
+nav { width: 100%; margin: 0; padding: 0; }
+.dropdown-item { font: 12px "Lucida Grande", Helvetica, Arial, sans-serif !important; }
+/* .register { width: 100%; left: 0; position: relative; text-align: center;  padding: 20px 30%; } */
+/* .menu { padding: 20px 0; } */
+/* .menu a { color: #00B7FF; } */
+/* form { width: 100%; } */
+/* .navbar-inverse { color: #000 !important; }
+nav a { color: #000 !important; }
+.navbar { border-color: #eee; background-color: #eee; }
+.active a { background-color: #eee !important; color: #000 !important; }
+.active a:hover { color: #fff !important; }
+.dropdown-toggle { background-color: #fff; } */
+/* hr {
+    display: block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    border-style: inset;
+    border-width: 1px;
+} */
+.btn-search-site {
+    padding-right: 5px;
+    /* padding-top: 10px; */
+    position: absolute;    /* para poder mover o botão para fora da caixa do menu */
+    left: -150px;           /* mete o botão de fora tornando-o clicável*/
+    background-color: #ffffff;
+    cursor: pointer;
+    top: 10px;
+}
+.navbar-search {
+    width: 200px;
+    /* height: 300px; */
+    right: -200px;  /* Menu inicia escondido [valor igual ao width] */
+    top: 5px;
+    padding-right: 5px;
+    border-bottom: 1px solid #ccc;
+    background-color: #ffffff;
+    color: #fff;
+    position: fixed; /* Todo o menu fica fixo, assim ele acompanha a página ao fazer-mos scroll */
 
-/* body {padding: 0 50px; font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;} */
-/* a {color: #00B7FF;} */
+    /* Faz a animação do menu deslizar em vez de aparecer logo aberto */
+    -webkit-transition: all 0.5s ease-in-out;
+    -moz-transition: all 0.5s ease-in-out;
+    -o-transition: all 0.5s ease-in-out;
+    transition: all 0.5s ease-in-out;
+
+    /* z-index: 1; */
+}
+.slideMenu {
+    right: 0; /* Coloca o menu na poisiçáo desejada de maneira a ficar visível */
+}
+/* .menuSearch ul {
+    list-style: none;
+    margin: 0;
+    padding: 10px 0 0 10px;
+} */
+.product-box { text-align: center; }
+.product-box a { color: #000000; text-decoration:none; }
+/* .product-box a:link { color: #000000; text-decoration:none; } */
+/* .product-box a:active { color: #000000; text-decoration:none; } */
+/* .product-box a:hover { color: #000000; text-decoration:none; } */
+.product-detail { padding: 50px; }
+.product-detail .detail { text-align: left; }

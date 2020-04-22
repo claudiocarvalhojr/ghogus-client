@@ -1,0 +1,25 @@
+<div class="login">
+    <form action="/login" method="POST">
+        
+        <div class="form-group login-input">
+            <input type="email" class="form-control" id="email" name="email" placeholder="Digite o seu e-mail" value="claudio.omar.jr@gmail.com" required>
+        </div>
+
+        <div class="form-group login-input">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Digite a sua senha" value="1rwbeKKw1" required>
+        </div>
+
+        <div class="form-group">
+            <input type="submit" value="ENTRAR" class="btn btn-md btn-outline-secondary">
+        </div>
+
+    </form>
+    <!-- <div>
+        <a href="#">Esqueci minha senha</a> | <a href="/registro">Registrar-se</a>
+    </div> -->
+    <div>
+        <% if(message) { %>
+            <p><label class="message"><b><%= message %></b></label></p>
+        <% } %>
+    </div>
+</div>

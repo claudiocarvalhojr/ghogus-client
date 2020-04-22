@@ -1,0 +1,10 @@
+<% if (doc == null) { %>
+    <p>Nenhum usuário cadastrado!</p>
+<% } else { %>
+    <p>Olá <b><%= name %>!</b></p>
+    <p>Nome: <%= doc.firstName %></p>
+    <p>Sobrenome: <%= doc.lastName %></p>
+    <p>Nascimento: <%= doc.birthDate %></p>
+    <p>E-mail: <%= doc.email %></p>
+    <p>Telefone: <%= doc.phoneNumber %></p>
+<% } %>

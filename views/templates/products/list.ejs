@@ -1,0 +1,14 @@
+<div class="products-list">
+    <% if (!docs || docs.length == 0) { %>
+        <p>Nenhum produto cadastrado!</p>
+    <% } else { docs.forEach(function(product) { %>
+        <p>ID: <%= product._id %></p>
+        <p>SKU: <%= product.sku %></p>
+        <p>Título: <%= product.title %></p>
+        <p>Descrição: <%= product.description %></p>
+        <p>Preço: <%= product.price %> Desconto: <%= product.discount %></p>
+        <p>Online: <%= product.online %> Online Date: <%= product.onlineDate %></p>
+        <p>Saleable: <%= product.saleable %> Saleable Date: <%= product.saleableDate %></p>
+        <p>Register Date: <%= product.registerDate %></p>
+    <% })} %>
+</div>

@@ -1,0 +1,45 @@
+<div class="row product-detail">
+
+    <% if (product == null) { %>
+
+        <div class="col-md-12">
+            <p>Nenhum produto cadastrado!</p>
+        </div>
+
+    <% } else { %>
+
+        <div class="col-md-8">
+            <img src="/images/products/<%= product.images[0].image %>">
+        </div>
+
+        <div class="col-md-4 detail">
+
+            <p style=" font-size: medium;"><%= product.title %></p>
+
+            <% if (product.discount > 0) { %>
+
+                <div class="form-group"><small style="font-weight: bold; font-size: large;">de <strike>R$
+                            <%= (parseFloat(product.price)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></strike>
+                        por</small>
+                    <small style="font-weight: bold; font-size: large;">R$
+                        <%= (parseFloat(product.price).toFixed(2) - ((parseFloat(product.price).toFixed(2) / 100) * product.discount).toFixed(2)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></small>
+                </div>
+
+            <% } else { %>
+
+                <div class="form-group"><small style="font-weight: bold; font-size: large;">R$
+                        <%= (parseFloat(product.price)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></small></b>
+                </div>
+
+            <% } %>
+
+            <a href="/cart"><div style="width: 100%; text-align: center; line-height: 50px; background-color: green; color: #ffffff; font-size: large;">COMPRAR</div></a>
+
+        <% } %>
+    </div>
+
+    <div class="col-md-12">
+
+        <p style="text-align: justify; font-size: medium; margin: 50px !important; top: 50px; width: 50%;"><%= product.description %></p>
+
+    </div>

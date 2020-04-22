@@ -1,0 +1,64 @@
+<div class="form-register">
+    <div>
+        <% if(message) { %>
+        <p><label class="message"><b><%= message %></b></label></p>
+        <% } %>
+    </div>
+    <form action="/signup" method="POST">
+        
+        <div class="form-group">
+            <input type="text" class="form-control" id="firstName" name="firstName" placeholder="Digite o seu nome"
+                value="Leisa" required>
+        </div>
+
+        <div class="form-group">
+            <input type="text" class="form-control" id="lastName" name="lastName" placeholder="Digite o seu sobrenome"
+                value="Gomes Carvalho" required>
+        </div>
+
+        <div class="form-group">
+            <input type="text" class="form-control" id="birthDate" name="birthDate"
+                placeholder="Digite a sua data de nascimento" value="06/02/1983" required>
+        </div>
+
+        <div class="form-group">
+            <input type="text" class="form-control" id="phoneNumber" name="phoneNumber"
+                placeholder="Digite o seu telefone" value="(51) 99879-6920" required>
+        </div>
+
+        <div class="form-group">
+            <input type="email" class="form-control" id="email" name="email" placeholder="Digite o seu e-mail"
+                value="leisagcarvalho@gmail.com" required>
+        </div>
+
+        <div class="form-group">
+            <input type="email" class="form-control" id="retypeEmail" name="retypeEmail"
+                placeholder="Digite novamente o seu e-mail" value="leisagcarvalho@gmail.com" required>
+        </div>
+
+        <div class="form-group">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Digite uma senha"
+                value="123" required>
+        </div>
+
+        <div class="form-group">
+            <input type="password" class="form-control" id="retypePassword" name="retypePassword"
+                placeholder="Digite novamente a mesma senha" value="123" required>
+        </div>
+
+        <div class="form-group">
+            <div class="g-recaptcha" data-callback="recaptchaCallback"
+                data-sitekey="6LeGO-oUAAAAANQ-zzx2kQ7RcxYcIRf0M_oHmn0J"></div>
+        </div>
+
+        <div class="form-group" style="padding-top: 20px;">
+            <input type="submit" id="btnNewRegister" value="SALVAR" class="btn btn-md btn-outline-secondary">
+        </div>
+
+    </form>
+</div>
+<script type="text/javascript">
+    function recaptchaCallback() {
+        $('#btnNewRegister').show();
+    }
+</script>

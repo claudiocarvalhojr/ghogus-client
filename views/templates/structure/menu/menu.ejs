@@ -1,0 +1,36 @@
+<nav class="navbar navbar-expand-lg navbar-light bg-white">
+
+  <div class="brand-site"><a class="navbar-brand" href="/"><%= title %></a></div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#menu-default"
+    aria-controls="menu-default" aria-expanded="false" aria-label="Alterna navegação">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="menu-default">
+    
+    <% if(menu == 'full') { %>
+    <%  include ./menu_full.ejs %>
+    <% } else if(menu == 'small') { %>
+    <%  include ./menu_small.ejs %>
+    <% } %>
+
+    <div class="navbar-search">
+      <form class="form-inline my-2 my-lg-0">
+        <img class="btn-search-site" id="btn-search-site" src="/images/buscar-2.png" width="22" height="22">
+        <input class="form-control mr-sm-2" type="text" placeholder="Buscar" autocomplete="off" id="search-site"
+          aria-label="Buscar" style="box-shadow: 0 0 0 0; border: 0 none; outline: 0;">
+      </form>
+    </div>
+
+    <ul class="navbar-nav mr-right">
+      <!-- <li class="nav-item">
+        <a class="nav-link" href="#"><img src="/images/buscar-2.png" width="16" height="16"> BUSCAR</a>
+      </li> -->
+      <li class="nav-item">
+        <a class="nav-link" href="/atendimento">ATENDIMENTO</a>
+      </li>
+    </ul>
+
+  </div>
+</nav>

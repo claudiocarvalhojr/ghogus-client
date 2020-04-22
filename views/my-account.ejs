@@ -1,8 +1,0 @@
-<p><a href="/home">Home</a> | <a href="/logout">Sair</a></p>
-<% if (!docs || docs.length == 0) { %>
-<p>Nenhum cliente cadastrado.</p>
-<% } else { docs.forEach(function(customer) { %>
-<p>Nome: <%= customer.nome %></p>
-<p>Idade: <%= customer.idade %></p>
-<p>UF: <%= customer.uf %></p>
-<% })} %>
