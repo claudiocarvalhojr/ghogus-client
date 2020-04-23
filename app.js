@@ -3,9 +3,10 @@ if (process.env.NODE_ENV !== 'production') {
 }
 var createError = require('http-errors');
 var express = require('express');
+var router = express.Router()
 var path = require('path');
 var cookieParser = require('cookie-parser');
-var cookie = require('cookie');
+// var cookie = require('cookie');
 var logger = require('morgan');
 
 var dbConfig = require('./db');

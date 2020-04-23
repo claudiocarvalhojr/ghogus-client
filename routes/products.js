@@ -1,4 +1,4 @@
-var Product = require('../models/product');
+// var Product = require('../models/product');
 const express = require('express')
 const request = require('request')
 const router = express.Router()
@@ -71,6 +71,52 @@ function problem(res, codeError) {
 
 module.exports = () => {
 
+    /* BUY PRODUCT */
+    router.get('/produtos/buy', (req, res, next) => {
+
+        // addProductToCart...
+
+        log('client/products/buy...')
+
+        // testar aqui se o cookie session-id já existe
+
+        request.get(process.env.API_GATEWAY + '/session-id', (error, result) => {
+
+            log('client/products/session-id...')
+
+            if (error) { return console.log('ERROR: ' + error) }
+
+            console.log('CODE: ' + result.statusCode)
+
+            if (result.statusCode == 200) {
+
+                console.log('RESULT: ' + JSON.parse(result.body).token)
+
+                // res.cookie('sessionId', JSON.parse(result.body).token) <-- ERRO AQUI
+
+                // caso não exista, criar o cart, salvar o token (no cookie e no cart), add o produto ao cart e direcionar as cart
+
+            }
+        })
+
+        // caso exista, pegar código do produto add ao cart e direcionar ao cart
+
+        if (isAuthenticated) {
+            return res.render('index', {
+                page: './templates/cart',
+                title: APP_TITLE,
+                menu: 'full',
+                message: null
+            })
+        }
+        res.render('index', {
+            page: './templates/cart',
+            title: APP_TITLE,
+            menu: 'small',
+            message: null
+        })
+    })
+
     /* FORM PRODUCT */
     router.get('/produtos/new', isAuthenticated, (req, res, next) => {
         log('client/products/new...')
@@ -96,7 +142,7 @@ module.exports = () => {
         let saleable = false
         if (req.body.saleable)
             saleable = true
-        let registerDate = new Date()
+        let registrationDate = new Date()
         let onlineDate = new Date(req.body.onlineDate)
         let saleableDte = new Date(req.body.saleableDate)
         let images = null
@@ -106,7 +152,9 @@ module.exports = () => {
         log('client/images/save...')
         request.post(API_GATEWAY + '/images?token=' + req.session.token, {
             json: {
-                'image': req.body.image
+                'image': req.body.image,
+                'registrationDate': registrationDate.toLocaleString(),
+                'changeDate': registrationDate.toLocaleString()
             }
         }, (error, response, body) => {
             if (error) { return console.log('ERRO: ' + error) }
@@ -131,8 +179,12 @@ module.exports = () => {
                                 'onlineDate': onlineDate.toLocaleString(),
                                 'saleable': saleable,
                                 'saleableDate': saleableDte.toLocaleString(),
-                                'registerDate': registerDate.toLocaleString(),
-                                'images': images
+                                'images': images,
+                                'root': null,
+                                'categories': null,
+                                'subcategories': null,
+                                'registrationDate': registrationDate.toLocaleString(),
+                                'changeDate': registrationDate.toLocaleString()
                             }
                         }, (error, response, body) => {
                             if (error) { return console.log('ERRO: ' + error) }

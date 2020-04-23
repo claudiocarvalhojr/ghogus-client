@@ -8,8 +8,6 @@ module.exports = mongoose.model('User', {
     phoneNumber: String,
     firstName: String,
     lastName: String,
-    registerDate: String,
-    cpfCnpj: String,
-    typePerson: String,
-    adresses: [Object]
+    registrationDate: String,
+    changeDate: String,
 }); 

@@ -18,17 +18,18 @@ module.exports = (passport) => {
                         return done(null, false, req.flash('message', 'Este e-mail já esta sendo utilizado!'));
                     } else {
                         let newUser = new User();
-                        let data = new Date()
+                        let registrationDate = new Date()
                         newUser.email = email;
                         newUser.password = createHash(password);
                         newUser.birthDate = req.body.birthDate;
                         newUser.phoneNumber = req.body.phoneNumber;
                         newUser.firstName = req.body.firstName;
                         newUser.lastName = req.body.lastName;
-                        newUser.registerDate = data.toLocaleString();
-                        newUser.cpfCnpj = null;
-                        newUser.typePerson = null;
-                        newUser.adresses = null;
+                        newUser.registrationDate = registrationDate.toLocaleString();
+                        newUser.changeDate = registrationDate.toLocaleString();
+                        // newUser.cpfCnpj = null;
+                        // newUser.typePerson = null;
+                        // newUser.adresses = null;
                         newUser.save((err) => {
                             if (err) {
                                 throw err;

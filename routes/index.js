@@ -140,7 +140,7 @@ module.exports = (passport) => {
         if (error) { return console.log('ERROR: ' + error) }
         if (response.body.auth) {
           req.session.token = response.body.token
-          res.cookie('sessionId', response.body.token)
+          // res.cookie('sessionId', response.body.token)
           res.redirect('/')
         }
       })
