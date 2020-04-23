@@ -13,11 +13,24 @@ if (hostName === 'localhost') {
 
 $(document).ready(function () {
 
+    // mask
     $('#btnNewRegister').hide();
     $('#birthDate').mask('00/00/0000');
     $('#phoneNumber').mask('(00) 00000-0000');
     $('#price').mask('#.##0,00', {reverse: true});
     // $('#price').mask('R$ 999.990,00');
+
+    // focus e select
+    $('#email').focus();
+    $('#email').select()
+
+   // focus e select
+   $('#firstName').focus();
+   $('#firstName').select()
+
+   // focus e select
+   $('#sku').focus();
+   $('#sku').select()
 
     $('#btn-search-site').click(function() {
         $('#btn-search-site').hide();

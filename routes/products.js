@@ -72,58 +72,91 @@ function problem(res, codeError) {
 module.exports = () => {
 
     /* BUY PRODUCT */
-    router.get('/produtos/buy', (req, res, next) => {
+    router.post('/cart', (req, res, next) => {
 
         // addProductToCart...
-
         log('client/products/buy...')
-
-        // testar aqui se o cookie session-id já existe
-
-        request.get(process.env.API_GATEWAY + '/session-id', (error, result) => {
-
-            log('client/products/session-id...')
-
-            if (error) { return console.log('ERROR: ' + error) }
-
-            console.log('CODE: ' + result.statusCode)
-
-            if (result.statusCode == 200) {
-
-                console.log('RESULT: ' + JSON.parse(result.body).token)
-
-                // res.cookie('sessionId', JSON.parse(result.body).token) <-- ERRO AQUI
-
-                // caso não exista, criar o cart, salvar o token (no cookie e no cart), add o produto ao cart e direcionar as cart
-
+        // testar aqui se o cookie "session-id" já existe
+        if (!req.cookies.sessionId) {
+            console.log('Não existe token...')
+            // obtem um novo token, gera o cart salva o token (no cookie e no cart), add o product ao cart
+            request.get(process.env.API_GATEWAY + '/session-id', (error, result) => {
+                log('client/products/session-id...')
+                if (error) { return console.log('ERROR: ' + error) }
+                // console.log('CODE: ' + result.statusCode)
+                if (result.statusCode == 200) {
+                    // console.log('RESULT: ' + JSON.parse(result.body).token)
+                    // cria o cart, salva o token gerado (no cookie e no cart), add o product ao cart e direciona ao cart
+                    res.cookie('sessionId', JSON.parse(result.body).token)
+                    if (isAuthenticated) {
+                        return res.render('index', {
+                            page: './templates/cart',
+                            title: APP_TITLE,
+                            menu: 'full',
+                            message: null
+                        })
+                    }
+                    res.render('index', {
+                        page: './templates/cart',
+                        title: APP_TITLE,
+                        menu: 'small',
+                        message: null
+                    })
+                }
+            })
+        } else {
+            console.log('Já existe token...')
+            console.log('token: ', req.cookies.sessionId)
+            // recupera o token, consulta o cart pelo token, add o product ao cart e direciona ao cart
+            if (isAuthenticated) {
+                return res.render('index', {
+                    page: './templates/cart',
+                    title: APP_TITLE,
+                    menu: 'full',
+                    message: null
+                })
             }
-        })
-
-        // caso exista, pegar código do produto add ao cart e direcionar ao cart
-
-        if (isAuthenticated) {
-            return res.render('index', {
+            res.render('index', {
                 page: './templates/cart',
                 title: APP_TITLE,
-                menu: 'full',
+                menu: 'small',
                 message: null
             })
         }
-        res.render('index', {
-            page: './templates/cart',
-            title: APP_TITLE,
-            menu: 'small',
-            message: null
-        })
     })
+
+    // router.get('/cart', (req, res, next) => {
+    //     if (isAuthenticated) {
+    //         return res.render('index', {
+    //             page: './templates/cart',
+    //             title: APP_TITLE,
+    //             menu: 'full',
+    //             message: null
+    //         })
+    //     }
+    //     res.render('index', {
+    //         page: './templates/cart',
+    //         title: APP_TITLE,
+    //         menu: 'small',
+    //         message: null
+    //     })
+    // })
 
     /* FORM PRODUCT */
     router.get('/produtos/new', isAuthenticated, (req, res, next) => {
         log('client/products/new...')
+
+        let data = new Date()
+        dataForm = data.getFullYear() + '-' + ('0' + (data.getMonth())).slice(-2) + '-' + data.getDate() + 'T' + data.toLocaleTimeString()
+
+        // console.log('DATA: ' + dataForm)
+
         res.render('index', {
             page: './templates/products/form',
             title: APP_TITLE,
             menu: 'full',
+            // date: '2020-04-23T00:00',
+            date: dataForm,
             message: null
         })
     })
@@ -147,7 +180,7 @@ module.exports = () => {
         let saleableDte = new Date(req.body.saleableDate)
         let images = null
 
-        console.log('VALOR: ' + (req.body.price - ((req.body.price) * req.body.discount)));
+        // console.log('VALOR: ' + (parseFloat(price) - (((parseFloat(price) / 100) * discount))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') );
 
         log('client/images/save...')
         request.post(API_GATEWAY + '/images?token=' + req.session.token, {

@@ -75,7 +75,7 @@ module.exports = (passport) => {
   router.get('/', (req, res, next) => {
     log('client/index... ')
 
-    console.log('Cookies: ', req.cookies)
+    // console.log('Cookies: ', req.cookies)
 
     req.session.register = false
     request.get(API_GATEWAY + '/products', (error, result) => {
@@ -87,10 +87,10 @@ module.exports = (passport) => {
         // price = price.split('.').join('')
         // price = price.replace(',', '.')
         // console.log('PRICE1: ' + price)
-        // console.log('CALC-1: ' + (parseFloat(price).toFixed(2) - ((parseFloat(price).toFixed(2) / 100).toFixed(2) * parseInt('50')).toFixed(2)).toFixed(2).toLocaleString('pt-BR', {minimumFractionDigits: 2}) )
+        // console.log('CALC-1: ' + (parseFloat(price) - ((parseFloat(price) / 100) * parseInt('50'))).toFixed(2).toLocaleString('pt-BR', {minimumFractionDigits: 2}) )
         // console.log('DISC-1: ' + body[0].discount)
         // console.log('CALC-2: ' + (parseFloat('299.90') - ((parseFloat('299.90') / 100) * parseInt('50'))) )
-        // console.log('CALC-3: ' + (parseFloat(body[0].price).toFixed(2) - ((parseFloat(body[0].price).toFixed(2) / 100) * parseInt(body[0].discount)).toFixed(2)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join(''))
+        // console.log('CALC-3: ' + (parseFloat(body[0].price) - ((parseFloat(body[0].price) / 100) * parseInt(body[0].discount))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join(''))
 
         if (req.isAuthenticated()) {
           return res.render('index', {

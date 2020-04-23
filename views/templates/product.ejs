@@ -33,7 +33,11 @@
 
             <% } %>
 
-            <a href="/produtos/buy"><div style="width: 100%; text-align: center; line-height: 50px; background-color: green; color: #ffffff; font-size: large;">COMPRAR</div></a>
+            <form action="/cart" method="POST">
+                <input type="hidden" id="sku" name="sku" value="<%= product.sku %>">
+                <input type="submit" id="btnComprar" value="COMPRAR" class="btn btn-md btn-success">
+            <!-- <a href="/cart"><div style="width: 100%; text-align: center; line-height: 50px; background-color: green; color: #ffffff; font-size: large;">COMPRAR</div></a> -->
+            </form>
 
         <% } %>
     </div>
