@@ -15,6 +15,7 @@ $(document).ready(function () {
 
     // mask
     $('#btnNewRegister').hide();
+    $('#freightCalculation').mask('00000-000');
     $('#birthDate').mask('00/00/0000');
     $('#phoneNumber').mask('(00) 00000-0000');
     $('#price').mask('#.##0,00', {reverse: true});

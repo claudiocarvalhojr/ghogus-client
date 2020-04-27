@@ -11,6 +11,7 @@ var logger = require('morgan');
 
 var dbConfig = require('./db');
 var mongoose = require('mongoose');
+var field = mongoose.Types.ObjectId();
 var useUnifiedTopology = { useUnifiedTopology: true, useNewUrlParser: true }
 mongoose.connect(dbConfig.url, useUnifiedTopology);
 

@@ -88,6 +88,23 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 
-  console.log('...start...');
+  // console.log('...start...');
+  // const p1 = async() => new Promise((resolve, reject) => {
+  //   // setTimeout(() => resolve('testando...'), 2000)
+  //   resolve('testando...')
+  // })  
+  // const p2 = p1()
+  // p2.then(string => console.log(string + ' bla bla bla'))
+  // console.log('...end...')
+
+  // const fnAtrasada = async() => new Promise(res => {
+  //   setTimeout(() => res('Olá'), 2000)
+  // })
+  // const fn = async(nome) => {
+  //   const saudacao = await fnAtrasada()
+  //   console.log('Função iniciada...')
+  //   return `${saudacao} ${nome}!`;
+  // }  
+  // fn('Ana').then(string => console.log(string));
 
 }

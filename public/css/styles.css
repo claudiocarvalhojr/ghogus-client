@@ -3,7 +3,8 @@ body { background-color: #f8f9fa !important; font: 12px "Lucida Grande", Helveti
 .container { width: 100% !important; margin: 0 !important; padding: 0 !important; }
 .row { width: 100% !important; margin: 0 !important; padding: 0 !important;  }
 .header { width: 100%; margin: 0; padding: 0; background-color: #ffffff; }
-.content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; border-top: 0.005em solid #ccc; background-color: #ffffff; text-align: center; }
+.content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; border-top: 0.005em solid #ccc; background-color: #f8f9fa; text-align: center; }
+/* .content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; border-top: 0.005em solid #ccc; background-color: #ffffff; text-align: center; } */
 /* .content { width: 100%; min-height: 516px; margin: 0; padding: 25px 0 0 0; background-color: #ffffff; text-align: center; } */
 .footer { width: 100%; position: relative; bottom: 0; min-height: 60px; line-height: 60px; color: #4f4f4f; background-color: #1c1c1c; text-align: center; }
 .login { width: 100%; left: 0; position: relative; text-align: center; padding: 0 30%; }
@@ -77,3 +78,14 @@ nav a { color: #000 !important; }
 /* .product-box a:hover { color: #000000; text-decoration:none; } */
 .product-detail { padding: 50px; }
 .product-detail .detail { text-align: left; }
+
+.cart { background-color: #f8f9fa; padding: 25px !important; margin: 0 !important; }
+.cart-title { font-size: large; font-weight: bold; color: #000000; padding-bottom: 15px !important; }
+.cart-items { text-align: left; background-color: #ffffff; }
+.cart-item { height: 80px; }
+.cart-item-title { padding: 20px; }
+.cart-price, .cart-remove { padding: 23px; }
+.cart-qty { padding: 20px; }
+#qty { width: 50px; }
+.cart-remove { font-weight: bolder; }
+.cart-resume { text-align: left; background-color: #ffffff; }

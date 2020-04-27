@@ -48,7 +48,7 @@ var isTokenValid = (req, res, next) => {
 function log(message) {
   let data = new Date()
   console.log('****************************************')
-  console.log(data.toLocaleDateString() + ' ' + data.toLocaleTimeString() + ' - ' + message)
+  console.log(data.toLocaleString() + ' - ' + message)
   // console.log('****************************************')
 }
 

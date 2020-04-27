@@ -6,7 +6,7 @@
     </div>
     <% } else { docs.forEach(function(product) { %>
 
-    <div class="col product-box">
+    <div class="col product-box" style="background-color: #ffffff;">
 
         <a href="/produto/<%= product.sku %>">
 
@@ -14,7 +14,7 @@
             <!-- <p>SKU: <%= product.sku %></p> -->
 
             <div class="form-group">
-                <img src="/images/products/<%= product.images[0].image %>">
+                <img src="/images/products/<%= product.images[0].name %>">
             </div>
 
             <!-- <div class="form-group"><%= product.title %></div> -->
