@@ -19,7 +19,7 @@ var isNotAuthenticated = (req, res, next) => {
 
 var isTokenValid = (req, res, next) => {
   request.get(API_GATEWAY + '/check?token=' + req.session.token, (error, result) => {
-    if (error) { return console.log('ERROR: ' + error) }
+    if (error) { return console.log('get/check/error: ' + error) }
     if (JSON.parse(result.body).auth) {
       return next()
     }
@@ -73,13 +73,13 @@ module.exports = (passport) => {
 
   /* INDEX */
   router.get('/', (req, res, next) => {
-    log('client/index... ')
+    log('index... ')
 
     // console.log('Cookies: ', req.cookies)
 
     req.session.register = false
     request.get(API_GATEWAY + '/products', (error, result) => {
-      if (error) { return console.log('ERROR: ' + error) }
+      if (error) { return console.log('get/index/error: ' + error) }
       if (result.statusCode == 200) {
 
         // let body = JSON.parse(result.body)
@@ -113,7 +113,7 @@ module.exports = (passport) => {
 
   /* LOGIN */
   router.get('/login', isNotAuthenticated, (req, res, next) => {
-    log('client/index... ')
+    log('get/index... ')
     req.session.register = false
     res.render('index', {
       page: './templates/login/form',
@@ -130,14 +130,14 @@ module.exports = (passport) => {
     failureFlash: true
   }),
     (req, res) => {
-      log('client/login...')
+      log('post/login...')
       request.post(API_GATEWAY + '/login', {
         json: {
           'id': req.user._id,
           'email': req.user.email
         }
       }, (error, response, body) => {
-        if (error) { return console.log('ERROR: ' + error) }
+        if (error) { return console.log('get/login/error: ' + error) }
         if (response.body.auth) {
           req.session.token = response.body.token
           // res.cookie('sessionId', response.body.token)
@@ -149,9 +149,9 @@ module.exports = (passport) => {
 
   /* HOME */
   // router.get('/home', (req, res, next) => {
-  //   log('client/home...')
+  //   log('get/home...')
   //   request.get(API_GATEWAY + '/products', (error, result) => {
-  //     if (error) { return console.log('ERROR: ' + error) }
+  //     if (error) { return console.log('get/home/error: ' + error) }
   //     if (result.statusCode == 200) {
   //       if (req.isAuthenticated()) {
   //         return res.render('index', {
@@ -174,9 +174,9 @@ module.exports = (passport) => {
 
   /* LOGOUT */
   router.get('/logout', isAuthenticated, (req, res, next) => {
-    log('client/logout...')
+    log('get/logout...')
     request.get(API_GATEWAY + '/logout', (error, result) => {
-      if (error) { return console.log('ERROR: ' + error) }
+      if (error) { return console.log('get/logout/error: ' + error) }
       req.session.token = JSON.parse(result.body).token
       req.logout()
       res.redirect('/')
@@ -185,7 +185,7 @@ module.exports = (passport) => {
 
   /* REGISTER */
   router.get('/registro', isNotAuthenticated, (req, res) => {
-    log('client/register... ')
+    log('get/register... ')
     res.render('index', {
       page: './templates/register/form',
       title: APP_TITLE,
@@ -201,7 +201,7 @@ module.exports = (passport) => {
     failureFlash: true
   }),
     (req, res) => {
-      log('client/signup...')
+      log('post/signup/success...')
       req.session.register = true
       res.render('index', {
         page: './templates/register/success',
@@ -217,7 +217,7 @@ module.exports = (passport) => {
 
   /* CONTATO */
   router.get('/contato', (req, res, next) => {
-    log('client/contact...')
+    log('get/contact...')
     if (req.isAuthenticated()) {
       return res.render('index', {
         page: './templates/structure/contact',
@@ -236,9 +236,9 @@ module.exports = (passport) => {
 
   /* MY-ACCOUNT */
   router.get('/minha-conta', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('client/my-account...')
+    log('get/my-account...')
     request.get(API_GATEWAY + '/user?id=' + req.user._id + '&token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('ERROR: ' + error) }
+      if (error) { return console.log('get/my-account/error: ' + error) }
 
       // console.log('RESULT: ' + result.body)
 
@@ -257,9 +257,9 @@ module.exports = (passport) => {
 
   /* USERS */
   router.get('/usuarios', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('client/users...')
+    log('get/users...')
     request.get(API_GATEWAY + '/users?token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('ERROR: ' + error) }
+      if (error) { return console.log('get/users/error: ' + error) }
 
       // console.log('RESULT: ' + result.body)
 
@@ -277,9 +277,9 @@ module.exports = (passport) => {
 
   /* CUSTOMERS */
   router.get('/clientes', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('client/customers...')
+    log('get/customers...')
     request.get(API_GATEWAY + '/customers?token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('ERROR: ' + error) }
+      if (error) { return console.log('get/customers/error: ' + error) }
 
       // console.log('RESULT: ' + result.body)
 
