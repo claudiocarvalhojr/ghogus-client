@@ -15,21 +15,17 @@
                             <tbody>
                                 <% cart.products.forEach(function (product) { %>
                                 <tr>
-                                    <td style="width: 10%;"><img
-                                            src="/images/products/<%= product.images[0].name %>" width="52"
-                                            height="52"></td>
+                                    <td style="width: 10%;"><img src="/images/products/<%= product.images[0].name %>" width="52" height="52"></td>
                                     <td style="text-align: left; padding-top: 25px;">
                                         <%= product.title %><br>SKU:
                                         <%= product.sku %></td>
-                                    <td style="width: 10%; padding-top: 30px;"><%= product.price %>
-                                    </td>
-                                    <td style="width: 10%; padding-top: 20px;"><input type="number" class="form-control"
-                                            id="qty" name="qty" value="<%= product.qty %>" min="1" max="1000"></td>
+                                    <td style="width: 10%; padding-top: 30px;"><%= product.price %></td>
+                                    <td style="width: 10%; padding-top: 20px;">
+                                        <input type="number" class="form-control" id="qty" name="qty" value="<%= product.qty %>" min="1" max="1000"></td>
                                     <td style="width: 10%; padding-top: 20px; font-size: large; font-weight: bold;">
                                         <form action="/cart" method="POST">
                                             <input type="hidden" id="remove" name="remove" value="<%= product.sku %>">
-                                            <input type="submit" id="btnRemoveProductFromCart"
-                                                name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
+                                            <input type="submit" id="btnRemoveProductFromCart" name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
                                         </form>
                                     </td>
                                 </tr>
@@ -53,8 +49,7 @@
                             <tr>
                                 <td style="width: 50%; text-align: left;">Cálculo de Frete</td>
                                 <td style="width: 50%; text-align: right;">
-                                    <input type="text" class="form-control" id="freightCalculation"
-                                        name="freightCalculation" placeholder="CEP">
+                                    <input type="text" class="form-control" id="freightCalculation" name="freightCalculation" placeholder="CEP">
                                 </td>
                             </tr>
                             <tr>
@@ -62,8 +57,7 @@
                                 <td style="width: 50%; text-align: right;">R$ 0,00</td>
                             </tr>
                             <tr>
-                                <td colspan="2" style="text-align: right;"><input type="submit" id="btnAddProductToCart"
-                                        name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success"></td>
+                                <td colspan="2" style="text-align: right;"><input type="submit" id="btnAddProductToCart" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success"></td>
                             </tr>
                         </table>
                     </div>
