@@ -77,7 +77,6 @@ module.exports = () => {
         log('post/cart...')
         let registrationDate = new Date()
         let user = req.user
-        console.log('user: ' + user)
         let sku = null
         let add = false
         let rem = false
@@ -91,7 +90,7 @@ module.exports = () => {
         }
         // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
         if (req.cookies.sessionId === undefined) {
-            console.log('Não existe token... e ADD...')
+            //Não existe token... e ADD true...
             if (add) {
                 //gera um novo token
                 log('get/cart/session-id...')
@@ -100,7 +99,7 @@ module.exports = () => {
                     if (result.statusCode == 200) {
                         // add o token ao cookie e define a vida últil dele: 60mim (teste)
                         // let ageSessionId = ((((1000 * 60) * 60) * 24) * 5)
-                        let ageSessionId = ((1000 * 60) * 1)
+                        let ageSessionId = ((1000 * 60) * 3)
                         res.cookie('sessionId', JSON.parse(result.body).token, { maxAge: ageSessionId })
                         let sessionId = JSON.parse(result.body).token
                         let authenticated = req.isAuthenticated()
@@ -114,15 +113,18 @@ module.exports = () => {
                                 if (JSON.parse(result.body).length > 0) {
                                     product = JSON.parse(result.body)[0]
                                     let productId = mongoose.Types.ObjectId(product._id);
-
-                                    console.log('productId: ' + productId)
-
                                     if (add) {
                                         // cria um novo cart, add produto e token ao cart
                                         log('post/cart...')
                                         request.post(API_GATEWAY + '/cart', {
                                             json: {
                                                 'sessionId': sessionId,
+                                                'isLogged': authenticated,
+                                                'isValid': true,
+                                                'isGift': false,
+                                                'voucher': null,
+                                                'postalCode': null,
+                                                'customer': user,
                                                 'products': [{
                                                     '_id': product._id,
                                                     'sku': product.sku,
@@ -136,12 +138,6 @@ module.exports = () => {
                                                         'name': product.images[0].name
                                                     }]
                                                 }],
-                                                'isLogged': authenticated,
-                                                'isValid': true,
-                                                'isGift': false,
-                                                'voucher': null,
-                                                'postalCode': null,
-                                                'customer': user,
                                                 'registrationDate': registrationDate.toLocaleString(),
                                                 'changeDate': registrationDate.toLocaleString()
                                             }
@@ -160,14 +156,16 @@ module.exports = () => {
                                                                 page: './templates/cart',
                                                                 title: APP_TITLE,
                                                                 menu: 'full',
-                                                                cart: cart
+                                                                cart: cart,
+                                                                resume: resume(cart)
                                                             })
                                                         }
                                                         return res.render('index', {
                                                             page: './templates/cart',
                                                             title: APP_TITLE,
                                                             menu: 'small',
-                                                            cart: cart
+                                                            cart: cart,
+                                                            resume: resume(cart)
                                                         })
                                                     }
                                                 })
@@ -179,45 +177,37 @@ module.exports = () => {
                         })
                     }
                 })
-            } else if (rem) {
-                console.log('Não existe token... e REM...')
+            } 
+            //Não existe token... e REM true...
+            else if (rem) {
                 if (req.isAuthenticated()) {
                     return res.render('index', {
                         page: './templates/cart',
                         title: APP_TITLE,
                         menu: 'full',
-                        cart: null
+                        cart: null,
+                        resume: resume(null)
                     })
                 }
                 return res.render('index', {
                     page: './templates/cart',
                     title: APP_TITLE,
                     menu: 'small',
-                    cart: null
+                    cart: null,
+                    resume: resume(null)
                 })
             }
         } else {
-
             // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
-            // recupera o token, consulta o cart pelo token, add o product ao cart e direciona ao cart
-
-            console.log('Já existe token...')
-
-            // busca o produto para add/update(qrt)/delete ao cart, através do sku vindo da PDP
+            // busca o produto para add(product)/update(qty)/delete(product) ao cart, através do sku vindo da PDP
             let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
             log('get/cart/product...')
             request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-
-                console.log('AQUI 1...')
-
                 if (error) { return console.log('get/cart/product/error: ' + error) }
                 if (result.statusCode == 200) {
                     let product = null
                     product = JSON.parse(result.body)[0]
                     if (JSON.parse(result.body).length > 0) {
-
-                        console.log('AQUI 2...')
-
                         product = JSON.parse(result.body)[0]
                         let productId = mongoose.Types.ObjectId(product._id);
                         // busca o cart recém criado e exibe a página do cart
@@ -225,50 +215,25 @@ module.exports = () => {
                         let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
                         log('get/cart/search...')
                         request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
-
-                            console.log('AQUI 3...')
-
                             if (error) { return console.log('get/cart/search/error: ' + error) }
                             if (result.statusCode == 200) {
-
-                                console.log('AQUI 4...')
-
                                 let cart = JSON.parse(result.body)[0]
-
                                 if (JSON.parse(result.body).length > 0) {
-
-                                    console.log('AQUI 5...')
-
                                     let isExists = false
                                     let count = 0
                                     let position = 0
                                     let compare = null
-                                    // let product = null
-
-                                    console.log('SKU: ' + sku)
-
                                     while (count < cart.products.length) {
-
-                                        console.log('P.SKU: ' + cart.products[count].sku + ' == SKU: ' + sku)
-
                                         compare = cart.products[count].sku.localeCompare(sku)
                                         if (compare == 0 && !isExists) {
                                             isExists = true
-                                            // product = products[count]
                                             position = count
                                         }
                                         count++
                                     }
-
+                                    // Update product to cart
                                     if (isExists && add) {
-
-                                        console.log('AQUI 6..')
-
-                                        // Update product to cart
-
-                                        // Produto já existe, atualiza a qty e changeDate
-                                        console.log('isExist: ' + isExists)
-
+                                        // Produto existe, atualiza a qty e changeDate
                                         log('patch/cart/product/set...')
                                         cart.products[position].qty++
                                         request.patch(API_GATEWAY + '/cart/set/' + cart._id + '_' + cart.products[position]._id, {
@@ -284,31 +249,23 @@ module.exports = () => {
                                                         page: './templates/cart',
                                                         title: APP_TITLE,
                                                         menu: 'full',
-                                                        cart: cart
+                                                        cart: cart,
+                                                        resume: resume(cart)
                                                     })
                                                 }
                                                 return res.render('index', {
                                                     page: './templates/cart',
                                                     title: APP_TITLE,
                                                     menu: 'small',
-                                                    cart: cart
+                                                    cart: cart,
+                                                    resume: resume(cart)
                                                 })
                                             }
                                         })
-
-                                    } else if (!isExists && add) {
-
-                                        console.log('AQUI 7...')
-
-                                        // Insert new product to cart
-
-                                        // Produto não existe, cria um novo produto e o add ao cart
-                                        console.log('isExist: ' + isExists)
-
-                                        // let productId = mongoose.Types.ObjectId();
-
-                                        console.log('productId: ' + productId)
-
+                                    }
+                                    // Insert new product to cart
+                                    else if (!isExists && add) {
+                                        // Produto não existe, cria um novo produto e add ao cart
                                         let newProduct = {
                                             '_id': productId,
                                             'sku': product.sku,
@@ -322,11 +279,7 @@ module.exports = () => {
                                                 'name': product.images[0].name
                                             }]
                                         }
-
                                         cart.products.push(newProduct)
-
-                                        console.log('products: ' + cart.products)
-
                                         log('patch/cart/product/push...')
                                         request.patch(API_GATEWAY + '/cart/push/' + cart._id, {
                                             json: {
@@ -341,125 +294,98 @@ module.exports = () => {
                                                         page: './templates/cart',
                                                         title: APP_TITLE,
                                                         menu: 'full',
-                                                        cart: cart
+                                                        cart: cart,
+                                                        resume: resume(cart)
                                                     })
                                                 }
                                                 return res.render('index', {
                                                     page: './templates/cart',
                                                     title: APP_TITLE,
                                                     menu: 'small',
-                                                    cart: cart
+                                                    cart: cart,
+                                                    resume: resume(cart)
                                                 })
                                             }
                                         })
                                     } else if (isExists && rem) {
-
-                                        console.log('AQUI 8...')
-
-                                        console.log('REMOVER')
-
-                                        console.log('isExist: ' + isExists)
-
                                         log('delete/cart/product/pull...')
-
-                                        console.log('product: ' + JSON.stringify(cart.products[position]))
-
-                                        let productId
-
                                         request.patch(API_GATEWAY + '/cart/pull/' + cart._id, {
-                                            json:
-                                                { 'products': { '_id': cart.products[position]._id } }
-                                            //   { '_id': '5ea75b2fe30af21f181e4592' }
+                                            json: { 
+                                                'products': { 
+                                                    '_id': cart.products[position]._id 
+                                                } 
+                                            }
                                         }, (error, response, body) => {
                                             if (error) { return console.log('delete/cart/product/pull/error: ' + error) }
                                             if (response.statusCode == 200) {
-
-                                                // cart.products.pull
-
                                                 log('get/cart/search...')
                                                 request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
-
-                                                    console.log('AQUI 9...')
-
                                                     if (error) { return console.log('get/cart/search/error: ' + error) }
                                                     if (result.statusCode == 200) {
-
-                                                        console.log('AQUI 10...')
-
                                                         cart = JSON.parse(result.body)[0]
-
                                                         if (cart.products.length == 0) {
                                                             cart = null
                                                         }
-
-                                                        console.log('AQUI 5...')
                                                         if (req.isAuthenticated()) {
                                                             return res.render('index', {
                                                                 page: './templates/cart',
                                                                 title: APP_TITLE,
                                                                 menu: 'full',
-                                                                cart: cart
+                                                                cart: cart,
+                                                                resume: resume(cart)
                                                             })
                                                         }
                                                         return res.render('index', {
                                                             page: './templates/cart',
                                                             title: APP_TITLE,
                                                             menu: 'small',
-                                                            cart: cart
+                                                            cart: cart,
+                                                            resume: resume(cart)
                                                         })
                                                     }
                                                 })
                                             }
                                         })
-
                                     } else {
-
+                                        // analisar um pouco mais quais as possibilidades levam a ocorrer este problema (chegar até aqui)
                                         console.log('Houve algum problema!')
                                         if (req.isAuthenticated()) {
                                             return res.render('index', {
                                                 page: './templates/cart',
                                                 title: APP_TITLE,
                                                 menu: 'full',
-                                                cart: cart
+                                                cart: cart,
+                                                resume: resume(cart)
                                             })
                                         }
                                         return res.render('index', {
                                             page: './templates/cart',
                                             title: APP_TITLE,
                                             menu: 'small',
-                                            cart: cart
+                                            cart: cart,
+                                            resume: resume(cart)
                                         })
-
                                     }
-
                                 } else {
-
-                                    console.log('Existe cookie, cart está vazio!')
-
-                                    console.log('AQUI 11...')
-
-                                    // console.log('Cookies: ', req.cookies)
-
+                                    // Existe cookie, mas cart está vazio
                                     if (req.cookies.sessionId !== undefined)
                                         res.clearCookie(sessionId)
-
-                                    // console.log('Cookies: ', req.cookies)
-
                                     if (req.isAuthenticated()) {
                                         return res.render('index', {
                                             page: './templates/cart',
                                             title: APP_TITLE,
                                             menu: 'full',
-                                            cart: cart
+                                            cart: cart,
+                                            resume: resume(cart)
                                         })
                                     }
                                     return res.render('index', {
                                         page: './templates/cart',
                                         title: APP_TITLE,
                                         menu: 'small',
-                                        cart: cart
+                                        cart: cart,
+                                        resume: resume(cart)
                                     })
-
                                 }
                             }
                         })
@@ -472,30 +398,25 @@ module.exports = () => {
     router.get('/cart', (req, res, next) => {
         log('get/cart...')
         if (req.cookies.sessionId === undefined) {
-            console.log('Não existe token...')
             if (req.isAuthenticated()) {
                 return res.render('index', {
                     page: './templates/cart',
                     title: APP_TITLE,
                     menu: 'full',
-                    cart: null
+                    cart: null,
+                    resume: resume(null)
                 })
             }
             return res.render('index', {
                 page: './templates/cart',
                 title: APP_TITLE,
                 menu: 'small',
-                cart: null
+                cart: null,
+                resume: resume(null)
             })
         }
         else {
-
-            // consultar carrinho
-
-            console.log('Já existe token...')
-            console.log('token: ', req.cookies.sessionId)
-
-            // busca o cart recém criado e exibe a página do cart
+            // busca o cart e exibe a página do cart
             let sessionId = req.cookies.sessionId
             let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
             log('get/cart/search...')
@@ -503,19 +424,24 @@ module.exports = () => {
                 if (error) { return console.log('get/cart/search/error: ' + error) }
                 if (result.statusCode == 200) {
                     let cart = JSON.parse(result.body)[0]
+                    if (cart.products.length == 0) {
+                        cart = null
+                    }
                     if (req.isAuthenticated()) {
                         return res.render('index', {
                             page: './templates/cart',
                             title: APP_TITLE,
                             menu: 'full',
-                            cart: cart
+                            cart: cart,
+                            resume: resume(cart)
                         })
                     }
                     return res.render('index', {
                         page: './templates/cart',
                         title: APP_TITLE,
                         menu: 'small',
-                        cart: cart
+                        cart: cart,
+                        resume: resume(cart)
                     })
                 }
             })
@@ -624,7 +550,6 @@ module.exports = () => {
                 let product = null
                 if (JSON.parse(result.body).length > 0) {
                     product = JSON.parse(result.body)[0]
-                    console.log('PRODUCT.SKU: ' + product.sku)
                 }
                 if (req.isAuthenticated()) {
                     return res.render('index', {
@@ -647,4 +572,32 @@ module.exports = () => {
 
     return router
 
+}
+
+function resume(cart) {
+    let subtotal = 0.00
+    let freight = 0.00
+    let total = 0.00
+    let reprice = 0.00
+    if (cart != null) {
+        let products = cart.products
+        if (products.length > 0) {
+            products.forEach(function (product) {
+                if (product.discount > 0) {
+                    reprice = (parseFloat(product.price) - (((parseFloat(product.price) / 100) * product.discount)))
+                    subtotal += reprice * product.qty
+                } else {
+                    reprice = 0.00
+                    subtotal += product.price * product.qty
+                }
+            })
+            total = subtotal + freight
+        }
+    }
+    let resume = {
+        'subtotal': subtotal,
+        'freight': freight,
+        'total': total
+    }
+    return resume
 }

@@ -19,7 +19,21 @@
                                     <td style="text-align: left; padding-top: 25px;">
                                         <%= product.title %><br>SKU:
                                         <%= product.sku %></td>
-                                    <td style="width: 10%; padding-top: 30px;"><%= product.price %></td>
+                                        <% if (product.discount > 0) { %>
+                                            <td style="width: 10%; padding-top: 30px;">
+                                                <strike><%= (parseFloat(product.price)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></strike>
+                                            </td>
+                                            <td style="width: 10%; padding-top: 30px;">
+                                                <%= (product.qty * (parseFloat(product.price) - (((parseFloat(product.price) / 100) * product.discount)))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %>
+                                            </td>
+                                        <% } else { %>
+                                            <td style="width: 10%; padding-top: 30px;">
+                                                <%= (parseFloat(product.price)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %>
+                                            </td>
+                                            <td style="width: 10%; padding-top: 30px;">
+                                                <%= (product.qty * (parseFloat(product.price))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %>
+                                            </td>
+                                        <% } %>
                                     <td style="width: 10%; padding-top: 20px;">
                                         <input type="number" class="form-control" id="qty" name="qty" value="<%= product.qty %>" min="1" max="1000"></td>
                                     <td style="width: 10%; padding-top: 20px; font-size: large; font-weight: bold;">
@@ -44,7 +58,7 @@
                         <table class="table table-borderless" style="background-color: #fff;">
                             <tr>
                                 <td style="width: 50%; text-align: left;">Subtotal</td>
-                                <td style="width: 50%; text-align: right;">R$ 0,00</td>
+                                <td style="width: 50%; text-align: right;"><%= (parseFloat(resume.subtotal)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></td>
                             </tr>
                             <tr>
                                 <td style="width: 50%; text-align: left;">Cálculo de Frete</td>
@@ -53,8 +67,8 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td style="width: 50%; text-align: left;">Total</td>
-                                <td style="width: 50%; text-align: right;">R$ 0,00</td>
+                                <td style="width: 50%; text-align: left; font-weight: bold; font-size: larger;">Total</td>
+                                <td style="width: 50%; text-align: right; font-weight: bold; font-size: larger;"><%= (parseFloat(resume.total)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></td>
                             </tr>
                             <tr>
                                 <td colspan="2" style="text-align: right;"><input type="submit" id="btnAddProductToCart" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success"></td>
