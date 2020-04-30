@@ -80,10 +80,12 @@ module.exports = () => {
         let registrationDate = new Date()
         let user = req.user
         let sku = null
+        let cartId = null
         let addItemCart = false
         let updateQtyItemCart = false
         let qtyItemCart = 0
         let removeItemCart = false
+        let freightCalculationCart = false
         if (req.body.addItemCart !== undefined) {
             sku = req.body.addItemCart
             addItemCart = true
@@ -96,6 +98,10 @@ module.exports = () => {
         else if (req.body.removeItemCart != undefined) {
             sku = req.body.removeItemCart
             removeItemCart = true
+        }
+        else if (req.body.freightCalculationCart != undefined) {
+            cartId = req.body.freightCalculationCart
+            freightCalculationCart = true
         }
         // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
         if (req.cookies.sessionId === undefined) {
@@ -127,7 +133,7 @@ module.exports = () => {
                                         if (user !== undefined)
                                             user = { '_id': user._id }
                                         else
-                                            user = null                                            
+                                            user = null
                                         log('post/cart...')
                                         request.post(API_GATEWAY + '/cart', {
                                             json: {
@@ -160,7 +166,7 @@ module.exports = () => {
                                                 // busca o cart recém criado e exibe a página do cart
                                                 let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
                                                 log('get/cart/search...')
-                                                request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
+                                                request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
                                                     if (error) { return console.log('get/cart/search/error: ' + error) }
                                                     if (result.statusCode == 200) {
                                                         let cart = JSON.parse(result.body)[0]
@@ -181,136 +187,175 @@ module.exports = () => {
                 goCart(req, res, null)
             }
         } else {
-            // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
-            // busca o produto para add(product)/update(qty)/delete(product) ao cart, através do sku vindo da PDP
-            let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
-            log('get/cart/product...')
-            request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-                if (error) { return console.log('get/cart/product/error: ' + error) }
-                if (result.statusCode == 200) {
-                    let product = null
-                    product = JSON.parse(result.body)[0]
-                    if (JSON.parse(result.body).length > 0) {
+            if (freightCalculationCart) {
+                log('cart/freight-calculation...')
+                // let url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl';
+                // soap.createClient(url, function (error, client) {
+                //     client.CalcPrecoPrazo(
+                //         {
+                //             nCdEmpresa: '',
+                //             sDsSenha: '',
+                //             // nCdServico: '04014', // SEDEX
+                //             nCdServico: '04510', // PAC
+                //             sCepOrigem: '93950000',
+                //             sCepDestino: '96690000',
+                //             nVlPeso: '1',
+                //             nCdFormato: 3,
+                //             nVlComprimento: '0',
+                //             nVlAltura: '0',
+                //             nVlLargura: '0',
+                //             nVlDiametro: '0',
+                //             sCdMaoPropria: 'N',
+                //             nVlValorDeclarado: '0',
+                //             sCdAvisoRecebimento: 'N'
+                //         }, function (error, result) {
+                //             if (error) { return console.log('get/frete/error: ' + error) }
+                //             console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
+                //         }
+                //     )
+                // })
+                console.log('CART ID: ' + cartId)
+                request.get(API_GATEWAY + '/cart/' + cartId, (error, result) => {
+                    if (error) { return console.log('get/cart/error: ' + error) }
+                    if (result.statusCode == 200) {
+                        cart = JSON.parse(result.body)[0]
+                        goCart(req, res, cart)
+                    }
+                })
+            } else {
+
+
+                // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
+                // busca o produto para add(product)/update(qty)/delete(product) ao cart, através do sku vindo da PDP
+                let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
+                log('get/cart/product...')
+                request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
+                    if (error) { return console.log('get/cart/product/error: ' + error) }
+                    if (result.statusCode == 200) {
+                        let product = null
                         product = JSON.parse(result.body)[0]
-                        let productId = mongoose.Types.ObjectId(product._id);
-                        // busca o cart recém criado e exibe a página do cart
-                        let sessionId = req.cookies.sessionId
-                        let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
-                        log('get/cart/search...')
-                        request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
-                            if (error) { return console.log('get/cart/search/error: ' + error) }
-                            if (result.statusCode == 200) {
-                                let cart = JSON.parse(result.body)[0]
-                                if (JSON.parse(result.body).length > 0) {
-                                    let isExists = false
-                                    let count = 0
-                                    let position = 0
-                                    let compare = null
-                                    while (count < cart.products.length) {
-                                        compare = cart.products[count].sku.localeCompare(sku)
-                                        if (compare == 0 && !isExists) {
-                                            isExists = true
-                                            position = count
+                        if (JSON.parse(result.body).length > 0) {
+                            product = JSON.parse(result.body)[0]
+                            let productId = mongoose.Types.ObjectId(product._id);
+                            // busca o cart recém criado e exibe a página do cart
+                            let sessionId = req.cookies.sessionId
+                            let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
+                            log('get/cart/search...')
+                            request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
+                                if (error) { return console.log('get/cart/search/error: ' + error) }
+                                if (result.statusCode == 200) {
+                                    let cart = JSON.parse(result.body)[0]
+                                    if (JSON.parse(result.body).length > 0) {
+                                        let isExists = false
+                                        let count = 0
+                                        let position = 0
+                                        let compare = null
+                                        while (count < cart.products.length) {
+                                            compare = cart.products[count].sku.localeCompare(sku)
+                                            if (compare == 0 && !isExists) {
+                                                isExists = true
+                                                position = count
+                                            }
+                                            count++
                                         }
-                                        count++
-                                    }
-                                    // Update product to cart
-                                    if (isExists && (addItemCart && cart.products[position].qty < limitQtyItemCart || updateQtyItemCart && qtyItemCart <= limitQtyItemCart)) {
-                                        // Update qty and changeDate
-                                        log('patch/cart/product/set...')
-                                        if (addItemCart)
-                                            cart.products[position].qty++
-                                        else if (updateQtyItemCart)
-                                            cart.products[position].qty = qtyItemCart
-                                        request.patch(API_GATEWAY + '/cart/set/' + cart._id + '_' + cart.products[position]._id, {
-                                            json: {
-                                                'products.$.qty': cart.products[position].qty,
-                                                'changeDate': new Date().toLocaleString()
-                                            }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('patch/cart/product/set/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                goCart(req, res, cart)
-                                            }
-                                        })
-                                    }
-                                    // Insert new product to cart
-                                    else if (!isExists && addItemCart) {
-                                        // Produto não existe, cria um novo produto e add ao cart
-                                        let newProduct = {
-                                            '_id': productId,
-                                            'sku': product.sku,
-                                            'title': product.title,
-                                            'price': product.price,
-                                            'discount': product.discount,
-                                            'online': product.online,
-                                            'saleable': product.saleable,
-                                            'qty': 1,
-                                            'images': [{
-                                                'name': product.images[0].name
-                                            }]
-                                        }
-
-                                        // TO-DO: remover valor do array cart (splice) caso ocorra erro
-                                        // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
-
-                                        cart.products.push(newProduct)
-                                        log('patch/cart/product/push...')
-                                        request.patch(API_GATEWAY + '/cart/push/' + cart._id, {
-                                            json: {
-                                                'products': cart.products,
-                                                'changeDate': new Date().toLocaleString()
-                                            }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('patch/cart/product/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                goCart(req, res, cart)
-                                            }
-                                        })
-                                    } else if (isExists && removeItemCart) {
-                                        log('delete/cart/product/pull...')
-                                        request.patch(API_GATEWAY + '/cart/pull/' + cart._id, {
-                                            json: {
-                                                'products': {
-                                                    '_id': cart.products[position]._id
+                                        // Update product to cart
+                                        if (isExists && (addItemCart && cart.products[position].qty < limitQtyItemCart || updateQtyItemCart && qtyItemCart <= limitQtyItemCart)) {
+                                            // Update qty and changeDate
+                                            log('patch/cart/product/set...')
+                                            if (addItemCart)
+                                                cart.products[position].qty++
+                                            else if (updateQtyItemCart)
+                                                cart.products[position].qty = qtyItemCart
+                                            request.patch(API_GATEWAY + '/cart/set/' + cart._id + '_' + cart.products[position]._id, {
+                                                json: {
+                                                    'products.$.qty': cart.products[position].qty,
+                                                    'changeDate': new Date().toLocaleString()
                                                 }
+                                            }, (error, response, body) => {
+                                                if (error) { return console.log('patch/cart/product/set/error: ' + error) }
+                                                if (response.statusCode == 200) {
+                                                    goCart(req, res, cart)
+                                                }
+                                            })
+                                        }
+                                        // Insert new product to cart
+                                        else if (!isExists && addItemCart) {
+                                            // Produto não existe, cria um novo produto e add ao cart
+                                            let newProduct = {
+                                                '_id': productId,
+                                                'sku': product.sku,
+                                                'title': product.title,
+                                                'price': product.price,
+                                                'discount': product.discount,
+                                                'online': product.online,
+                                                'saleable': product.saleable,
+                                                'qty': 1,
+                                                'images': [{
+                                                    'name': product.images[0].name
+                                                }]
                                             }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('delete/cart/product/pull/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                log('get/cart/search...')
 
-                                                // TO-DO: remover a busca abaixo ao cart, substituir por remover valor do array cart (splice)
-                                                // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
+                                            // TO-DO: remover valor do array cart (splice) caso ocorra erro
+                                            // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
 
-                                                request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
-                                                    if (error) { return console.log('get/cart/search/error: ' + error) }
-                                                    if (result.statusCode == 200) {
-                                                        cart = JSON.parse(result.body)[0]
-                                                        if (cart.products.length == 0) {
-                                                            cart = null
-                                                        }
-                                                        goCart(req, res, cart)
+                                            cart.products.push(newProduct)
+                                            log('patch/cart/product/push...')
+                                            request.patch(API_GATEWAY + '/cart/push/' + cart._id, {
+                                                json: {
+                                                    'products': cart.products,
+                                                    'changeDate': new Date().toLocaleString()
+                                                }
+                                            }, (error, response, body) => {
+                                                if (error) { return console.log('patch/cart/product/error: ' + error) }
+                                                if (response.statusCode == 200) {
+                                                    goCart(req, res, cart)
+                                                }
+                                            })
+                                        } else if (isExists && removeItemCart) {
+                                            log('delete/cart/product/pull...')
+                                            request.patch(API_GATEWAY + '/cart/pull/' + cart._id, {
+                                                json: {
+                                                    'products': {
+                                                        '_id': cart.products[position]._id
                                                     }
-                                                })
-                                            }
-                                        })
+                                                }
+                                            }, (error, response, body) => {
+                                                if (error) { return console.log('delete/cart/product/pull/error: ' + error) }
+                                                if (response.statusCode == 200) {
+                                                    log('get/cart/search...')
+
+                                                    // TO-DO: remover a busca abaixo ao cart, substituir por remover valor do array cart (splice)
+                                                    // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
+
+                                                    request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
+                                                        if (error) { return console.log('get/cart/search/error: ' + error) }
+                                                        if (result.statusCode == 200) {
+                                                            cart = JSON.parse(result.body)[0]
+                                                            if (cart.products.length == 0) {
+                                                                cart = null
+                                                            }
+                                                            goCart(req, res, cart)
+                                                        }
+                                                    })
+                                                }
+                                            })
+                                        } else {
+                                            // analisar um pouco mais quais as possibilidades levam a ocorrer este problema (chegar até aqui)
+                                            console.log('Houve algum problema!')
+                                            goCart(req, res, cart)
+                                        }
                                     } else {
-                                        // analisar um pouco mais quais as possibilidades levam a ocorrer este problema (chegar até aqui)
-                                        console.log('Houve algum problema!')
+                                        // Existe cookie, mas cart está vazio
+                                        if (req.cookies.sessionId !== undefined)
+                                            res.clearCookie(sessionId)
                                         goCart(req, res, cart)
                                     }
-                                } else {
-                                    // Existe cookie, mas cart está vazio
-                                    if (req.cookies.sessionId !== undefined)
-                                        res.clearCookie(sessionId)
-                                    goCart(req, res, cart)
                                 }
-                            }
-                        })
+                            })
+                        }
                     }
-                }
-            })
+                })
+            }
         }
     })
 
@@ -324,7 +369,7 @@ module.exports = () => {
             let sessionId = req.cookies.sessionId
             let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
             log('get/cart/search...')
-            request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
+            request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
                 if (error) { return console.log('get/cart/search/error: ' + error) }
                 if (result.statusCode == 200) {
                     let cart = JSON.parse(result.body)[0]
@@ -380,7 +425,7 @@ module.exports = () => {
                 'onlineDate': onlineDate.toLocaleString(),
                 'saleable': saleable,
                 'saleableDate': saleableDte.toLocaleString(),
-                'indexable' : true,
+                'indexable': true,
                 'images': [{
                     'name': req.body.image
                 }],

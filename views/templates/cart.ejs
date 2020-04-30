@@ -70,7 +70,11 @@
                             <tr>
                                 <td style="width: 50%; text-align: left;">Cálculo de Frete</td>
                                 <td style="width: 50%; text-align: right;">
-                                    <input type="text" class="form-control" id="freightCalculation" name="freightCalculation" placeholder="CEP">
+                                    <form action="/cart" method="POST" name="formFreightCalculationCart">
+                                        <input type="hidden" name="freightCalculationCart" value="<%= cart._id %>">
+                                        <input type="text" class="form-control" id="freightCalculation" name="freightCalculation" placeholder="CEP">
+                                        <button type="button" class="btn btn-light" onclick="this.form.submit()"> CEP </button>
+                                    </form>
                                 </td>
                             </tr>
                             <tr>
