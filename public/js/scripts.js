@@ -18,29 +18,29 @@ $(document).ready(function () {
     $('#freightCalculation').mask('00000-000');
     $('#birthDate').mask('00/00/0000');
     $('#phoneNumber').mask('(00) 00000-0000');
-    $('#price').mask('#.##0,00', {reverse: true});
+    $('#price').mask('#.##0,00', { reverse: true });
     // $('#price').mask('R$ 999.990,00');
 
     // focus e select
     $('#email').focus();
     $('#email').select()
 
-   // focus e select
-   $('#firstName').focus();
-   $('#firstName').select()
+    // focus e select
+    $('#firstName').focus();
+    $('#firstName').select()
 
-   // focus e select
-   $('#sku').focus();
-   $('#sku').select()
+    // focus e select
+    $('#sku').focus();
+    $('#sku').select()
 
-    $('#btn-search-site').click(function() {
+    $('#btn-search-site').click(function () {
         $('#btn-search-site').hide();
         $('.navbar-search').toggleClass('slideMenu');
         // $('#btn-search-site').css('left','-35px');
         $('#search-site').focus();
     });
 
-    $('#search-site').blur(function() {
+    $('#search-site').blur(function () {
         $('#btn-search-site').show();
         $('.navbar-search').toggleClass('slideMenu');
         // $('#btn-search-site').css('left','-150px');
@@ -52,7 +52,7 @@ $(document).ready(function () {
     // $('#btnSiteSearch').blur('click', function () {
     //     $('#btnSiteSearch').css('width', '75px')
     // });
-    
+
     function alertMessage(id, message) {
         $(id).html(message)
         // $(id).fadeIn(1000).delay(1000).fadeOut(1000);

@@ -16,9 +16,7 @@
                                 <% cart.products.forEach(function (product) { %>
                                 <tr>
                                     <td style="width: 10%;"><img src="/images/products/<%= product.images[0].name %>" width="52" height="52"></td>
-                                    <td style="text-align: left; padding-top: 25px;">
-                                        <%= product.title %><br>SKU:
-                                        <%= product.sku %></td>
+                                    <td style="text-align: left; padding-top: 25px;"><%= product.title %><br>SKU: <%= product.sku %></td>
                                         <% if (product.discount > 0) { %>
                                             <td style="width: 10%; padding-top: 30px;">
                                                 <strike><%= (parseFloat(product.price)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></strike>
@@ -35,11 +33,20 @@
                                             </td>
                                         <% } %>
                                     <td style="width: 10%; padding-top: 20px;">
-                                        <input type="number" class="form-control" id="qty" name="qty" value="<%= product.qty %>" min="1" max="1000"></td>
+                                        <form action="/cart" method="POST" name="formUpdateQtyItemCart">
+                                            <input type="hidden" name="updateQtyItemCart" value="<%= product.sku %>">
+                                            <select name="qty" class="form-control" style="width: 60px;" onchange="this.form.submit()">
+                                                <option value="1" <% if( product.qty == 1) { %>selected <% } %> >1</option>
+                                                <option value="2" <% if( product.qty == 2) { %>selected <% } %> >2</option>
+                                                <option value="3" <% if( product.qty == 3) { %>selected <% } %> >3</option>
+                                                <option value="4" <% if( product.qty == 4) { %>selected <% } %> >4</option>
+                                                <option value="5" <% if( product.qty == 5) { %>selected <% } %> >5</option>
+                                            </select>
+                                        </form>
                                     <td style="width: 10%; padding-top: 20px; font-size: large; font-weight: bold;">
-                                        <form action="/cart" method="POST">
-                                            <input type="hidden" id="remove" name="remove" value="<%= product.sku %>">
-                                            <input type="submit" id="btnRemoveProductFromCart" name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
+                                        <form action="/cart" method="POST" name="formRemoveItemCart">
+                                            <input type="hidden" name="removeItemCart" value="<%= product.sku %>">
+                                            <input type="submit" name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
                                         </form>
                                     </td>
                                 </tr>

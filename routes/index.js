@@ -1,6 +1,8 @@
 const express = require('express')
 const request = require('request')
 const router = express.Router()
+//const xml2js = require('xml2js');
+const soap = require('soap');
 
 const APP_TITLE = process.env.APP_TITLE
 const API_GATEWAY = process.env.API_GATEWAY
@@ -293,6 +295,34 @@ module.exports = (passport) => {
       }
       problem(res, result.statusCode)
     })
+  })
+
+  router.get('/frete', (req, res, next) => {
+    log('get/frete...')
+    // var url = 'https://www.gcomputer.net/webservices/dilbert.asmx?wsdl';
+    // var url = 'https://www.dneonline.com/calculator.asmx?wsdl';
+    // var url = 'https://ws.correios.com.br/calculador/CalcPrecoPrazo.aspx?wsdl';
+    var url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl';
+    soap.createClient(url, function (err, client) {
+
+      if (err) return console.log(err);
+      
+
+      // client.DailyDilbert({ ADate: "2019-11-02" }, function (err, result) {
+      //   if (err) return console.log(err);
+      //   console.log(result.DailyDilbertResult);
+      // });
+
+      console.log(client);
+    });
+
+    // var url = 'http://www.gcomputer.net/webservices/dilbert.asmx?wsdl';
+    // soap.createClient(url, function (err, client) {
+    //   if (err) return console.log(err);
+    //   console.log(client);
+    // });
+
+    res.redirect('/')
   })
 
   return router

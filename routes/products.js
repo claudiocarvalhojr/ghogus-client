@@ -1,8 +1,10 @@
 // var Product = require('../models/product')
 const express = require('express')
 const request = require('request')
-let mongoose = require('mongoose');
+let mongoose = require('mongoose')
 const router = express.Router()
+
+const limitQtyItemCart = 5
 
 const APP_TITLE = process.env.APP_TITLE
 const API_GATEWAY = process.env.API_GATEWAY
@@ -78,20 +80,27 @@ module.exports = () => {
         let registrationDate = new Date()
         let user = req.user
         let sku = null
-        let add = false
-        let rem = false
-        if (req.body.add !== undefined) {
-            sku = req.body.add
-            add = true
+        let addItemCart = false
+        let updateQtyItemCart = false
+        let qtyItemCart = 0
+        let removeItemCart = false
+        if (req.body.addItemCart !== undefined) {
+            sku = req.body.addItemCart
+            addItemCart = true
         }
-        else if (req.body.remove != undefined) {
-            sku = req.body.remove
-            rem = true
+        else if (req.body.updateQtyItemCart !== undefined) {
+            sku = req.body.updateQtyItemCart
+            updateQtyItemCart = true
+            qtyItemCart = req.body.qty
+        }
+        else if (req.body.removeItemCart != undefined) {
+            sku = req.body.removeItemCart
+            removeItemCart = true
         }
         // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
         if (req.cookies.sessionId === undefined) {
-            //Não existe token... e ADD true...
-            if (add) {
+            //Não existe token... e addItemCart true...
+            if (addItemCart) {
                 //gera um novo token
                 log('get/cart/session-id...')
                 request.get(process.env.API_GATEWAY + '/session-id', (error, result) => {
@@ -99,10 +108,9 @@ module.exports = () => {
                     if (result.statusCode == 200) {
                         // add o token ao cookie e define a vida últil dele: 60mim (teste)
                         // let ageSessionId = ((((1000 * 60) * 60) * 24) * 5)
-                        let ageSessionId = ((1000 * 60) * 3)
+                        let ageSessionId = ((1000 * 60) * 1)
                         res.cookie('sessionId', JSON.parse(result.body).token, { maxAge: ageSessionId })
                         let sessionId = JSON.parse(result.body).token
-                        let authenticated = req.isAuthenticated()
                         // busca o produto para add ao cart, através do sku vindo da PDP
                         let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
                         log('get/cart/product...')
@@ -113,8 +121,13 @@ module.exports = () => {
                                 if (JSON.parse(result.body).length > 0) {
                                     product = JSON.parse(result.body)[0]
                                     let productId = mongoose.Types.ObjectId(product._id);
-                                    if (add) {
+                                    if (addItemCart) {
                                         // cria um novo cart, add produto e token ao cart
+                                        let authenticated = req.isAuthenticated()
+                                        if (user !== undefined)
+                                            user = { '_id': user._id }
+                                        else
+                                            user = null                                            
                                         log('post/cart...')
                                         request.post(API_GATEWAY + '/cart', {
                                             json: {
@@ -151,22 +164,7 @@ module.exports = () => {
                                                     if (error) { return console.log('get/cart/search/error: ' + error) }
                                                     if (result.statusCode == 200) {
                                                         let cart = JSON.parse(result.body)[0]
-                                                        if (req.isAuthenticated()) {
-                                                            return res.render('index', {
-                                                                page: './templates/cart',
-                                                                title: APP_TITLE,
-                                                                menu: 'full',
-                                                                cart: cart,
-                                                                resume: resume(cart)
-                                                            })
-                                                        }
-                                                        return res.render('index', {
-                                                            page: './templates/cart',
-                                                            title: APP_TITLE,
-                                                            menu: 'small',
-                                                            cart: cart,
-                                                            resume: resume(cart)
-                                                        })
+                                                        goCart(req, res, cart)
                                                     }
                                                 })
                                             }
@@ -177,25 +175,10 @@ module.exports = () => {
                         })
                     }
                 })
-            } 
-            //Não existe token... e REM true...
-            else if (rem) {
-                if (req.isAuthenticated()) {
-                    return res.render('index', {
-                        page: './templates/cart',
-                        title: APP_TITLE,
-                        menu: 'full',
-                        cart: null,
-                        resume: resume(null)
-                    })
-                }
-                return res.render('index', {
-                    page: './templates/cart',
-                    title: APP_TITLE,
-                    menu: 'small',
-                    cart: null,
-                    resume: resume(null)
-                })
+            }
+            //Não existe token... e removeItemCart true...
+            else if (removeItemCart) {
+                goCart(req, res, null)
             }
         } else {
             // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
@@ -232,10 +215,13 @@ module.exports = () => {
                                         count++
                                     }
                                     // Update product to cart
-                                    if (isExists && add) {
-                                        // Produto existe, atualiza a qty e changeDate
+                                    if (isExists && (addItemCart && cart.products[position].qty < limitQtyItemCart || updateQtyItemCart && qtyItemCart <= limitQtyItemCart)) {
+                                        // Update qty and changeDate
                                         log('patch/cart/product/set...')
-                                        cart.products[position].qty++
+                                        if (addItemCart)
+                                            cart.products[position].qty++
+                                        else if (updateQtyItemCart)
+                                            cart.products[position].qty = qtyItemCart
                                         request.patch(API_GATEWAY + '/cart/set/' + cart._id + '_' + cart.products[position]._id, {
                                             json: {
                                                 'products.$.qty': cart.products[position].qty,
@@ -244,27 +230,12 @@ module.exports = () => {
                                         }, (error, response, body) => {
                                             if (error) { return console.log('patch/cart/product/set/error: ' + error) }
                                             if (response.statusCode == 200) {
-                                                if (req.isAuthenticated()) {
-                                                    return res.render('index', {
-                                                        page: './templates/cart',
-                                                        title: APP_TITLE,
-                                                        menu: 'full',
-                                                        cart: cart,
-                                                        resume: resume(cart)
-                                                    })
-                                                }
-                                                return res.render('index', {
-                                                    page: './templates/cart',
-                                                    title: APP_TITLE,
-                                                    menu: 'small',
-                                                    cart: cart,
-                                                    resume: resume(cart)
-                                                })
+                                                goCart(req, res, cart)
                                             }
                                         })
                                     }
                                     // Insert new product to cart
-                                    else if (!isExists && add) {
+                                    else if (!isExists && addItemCart) {
                                         // Produto não existe, cria um novo produto e add ao cart
                                         let newProduct = {
                                             '_id': productId,
@@ -279,6 +250,10 @@ module.exports = () => {
                                                 'name': product.images[0].name
                                             }]
                                         }
+
+                                        // TO-DO: remover valor do array cart (splice) caso ocorra erro
+                                        // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
+
                                         cart.products.push(newProduct)
                                         log('patch/cart/product/push...')
                                         request.patch(API_GATEWAY + '/cart/push/' + cart._id, {
@@ -289,36 +264,25 @@ module.exports = () => {
                                         }, (error, response, body) => {
                                             if (error) { return console.log('patch/cart/product/error: ' + error) }
                                             if (response.statusCode == 200) {
-                                                if (req.isAuthenticated()) {
-                                                    return res.render('index', {
-                                                        page: './templates/cart',
-                                                        title: APP_TITLE,
-                                                        menu: 'full',
-                                                        cart: cart,
-                                                        resume: resume(cart)
-                                                    })
-                                                }
-                                                return res.render('index', {
-                                                    page: './templates/cart',
-                                                    title: APP_TITLE,
-                                                    menu: 'small',
-                                                    cart: cart,
-                                                    resume: resume(cart)
-                                                })
+                                                goCart(req, res, cart)
                                             }
                                         })
-                                    } else if (isExists && rem) {
+                                    } else if (isExists && removeItemCart) {
                                         log('delete/cart/product/pull...')
                                         request.patch(API_GATEWAY + '/cart/pull/' + cart._id, {
-                                            json: { 
-                                                'products': { 
-                                                    '_id': cart.products[position]._id 
-                                                } 
+                                            json: {
+                                                'products': {
+                                                    '_id': cart.products[position]._id
+                                                }
                                             }
                                         }, (error, response, body) => {
                                             if (error) { return console.log('delete/cart/product/pull/error: ' + error) }
                                             if (response.statusCode == 200) {
                                                 log('get/cart/search...')
+
+                                                // TO-DO: remover a busca abaixo ao cart, substituir por remover valor do array cart (splice)
+                                                // cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
+
                                                 request.get(API_GATEWAY + '/cart/' + JSON.stringify(findCart), (error, result) => {
                                                     if (error) { return console.log('get/cart/search/error: ' + error) }
                                                     if (result.statusCode == 200) {
@@ -326,22 +290,7 @@ module.exports = () => {
                                                         if (cart.products.length == 0) {
                                                             cart = null
                                                         }
-                                                        if (req.isAuthenticated()) {
-                                                            return res.render('index', {
-                                                                page: './templates/cart',
-                                                                title: APP_TITLE,
-                                                                menu: 'full',
-                                                                cart: cart,
-                                                                resume: resume(cart)
-                                                            })
-                                                        }
-                                                        return res.render('index', {
-                                                            page: './templates/cart',
-                                                            title: APP_TITLE,
-                                                            menu: 'small',
-                                                            cart: cart,
-                                                            resume: resume(cart)
-                                                        })
+                                                        goCart(req, res, cart)
                                                     }
                                                 })
                                             }
@@ -349,43 +298,13 @@ module.exports = () => {
                                     } else {
                                         // analisar um pouco mais quais as possibilidades levam a ocorrer este problema (chegar até aqui)
                                         console.log('Houve algum problema!')
-                                        if (req.isAuthenticated()) {
-                                            return res.render('index', {
-                                                page: './templates/cart',
-                                                title: APP_TITLE,
-                                                menu: 'full',
-                                                cart: cart,
-                                                resume: resume(cart)
-                                            })
-                                        }
-                                        return res.render('index', {
-                                            page: './templates/cart',
-                                            title: APP_TITLE,
-                                            menu: 'small',
-                                            cart: cart,
-                                            resume: resume(cart)
-                                        })
+                                        goCart(req, res, cart)
                                     }
                                 } else {
                                     // Existe cookie, mas cart está vazio
                                     if (req.cookies.sessionId !== undefined)
                                         res.clearCookie(sessionId)
-                                    if (req.isAuthenticated()) {
-                                        return res.render('index', {
-                                            page: './templates/cart',
-                                            title: APP_TITLE,
-                                            menu: 'full',
-                                            cart: cart,
-                                            resume: resume(cart)
-                                        })
-                                    }
-                                    return res.render('index', {
-                                        page: './templates/cart',
-                                        title: APP_TITLE,
-                                        menu: 'small',
-                                        cart: cart,
-                                        resume: resume(cart)
-                                    })
+                                    goCart(req, res, cart)
                                 }
                             }
                         })
@@ -398,22 +317,7 @@ module.exports = () => {
     router.get('/cart', (req, res, next) => {
         log('get/cart...')
         if (req.cookies.sessionId === undefined) {
-            if (req.isAuthenticated()) {
-                return res.render('index', {
-                    page: './templates/cart',
-                    title: APP_TITLE,
-                    menu: 'full',
-                    cart: null,
-                    resume: resume(null)
-                })
-            }
-            return res.render('index', {
-                page: './templates/cart',
-                title: APP_TITLE,
-                menu: 'small',
-                cart: null,
-                resume: resume(null)
-            })
+            goCart(req, res, null)
         }
         else {
             // busca o cart e exibe a página do cart
@@ -424,25 +328,9 @@ module.exports = () => {
                 if (error) { return console.log('get/cart/search/error: ' + error) }
                 if (result.statusCode == 200) {
                     let cart = JSON.parse(result.body)[0]
-                    if (cart.products.length == 0) {
+                    if (cart.products.length == 0)
                         cart = null
-                    }
-                    if (req.isAuthenticated()) {
-                        return res.render('index', {
-                            page: './templates/cart',
-                            title: APP_TITLE,
-                            menu: 'full',
-                            cart: cart,
-                            resume: resume(cart)
-                        })
-                    }
-                    return res.render('index', {
-                        page: './templates/cart',
-                        title: APP_TITLE,
-                        menu: 'small',
-                        cart: cart,
-                        resume: resume(cart)
-                    })
+                    goCart(req, res, cart)
                 }
             })
         }
@@ -492,6 +380,7 @@ module.exports = () => {
                 'onlineDate': onlineDate.toLocaleString(),
                 'saleable': saleable,
                 'saleableDate': saleableDte.toLocaleString(),
+                'indexable' : true,
                 'images': [{
                     'name': req.body.image
                 }],
@@ -572,6 +461,25 @@ module.exports = () => {
 
     return router
 
+}
+
+function goCart(req, res, cart) {
+    if (req.isAuthenticated()) {
+        return res.render('index', {
+            page: './templates/cart',
+            title: APP_TITLE,
+            menu: 'full',
+            cart: cart,
+            resume: resume(cart)
+        })
+    }
+    return res.render('index', {
+        page: './templates/cart',
+        title: APP_TITLE,
+        menu: 'small',
+        cart: cart,
+        resume: resume(cart)
+    })
 }
 
 function resume(cart) {
