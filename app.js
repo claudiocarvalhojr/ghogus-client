@@ -50,10 +50,14 @@ initPassport(passport);
 
 var index = require('./routes/index')(passport);
 var products = require('./routes/products')(passport);
+var cart = require('./routes/cart')(passport);
+var checkout = require('./routes/checkout')(passport);
 // var register = require('./routes/_register')(passport);
 // var contact = require('./routes/_contact');
 app.use('/', index);
 app.use('/', products)
+app.use('/', cart)
+app.use('/', checkout)
 // app.use('/', register)
 // app.use('/', contact)
 

@@ -98,7 +98,13 @@
                                 <td style="width: 50%; text-align: right; font-weight: bold; font-size: larger;">R$ <%= (parseFloat(resume.total)).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') %></td>
                             </tr>
                             <tr>
-                                <td colspan="2" style="text-align: right;"><input type="submit" id="btnAddProductToCart" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success"></td>
+                                <td colspan="2" style="text-align: right;">
+                                    <form action="/checkout" method="POST" id="formSendCheckout">
+                                        <input type="hidden" id="sendCheckout" name="sendCheckout" value="<%= cart.sessionId %>">
+                                        <input type="submit" id="btnSendCheckout" name="btnSendCheckout" value="COMPRAR" class="btn btn-md btn-success">
+                                    </form>
+                                    <!-- <input type="submit" id="btnAddProductToCart" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success"> -->
+                                </td>
                             </tr>
                         </table>
                     </div>
