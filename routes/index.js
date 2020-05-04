@@ -1,8 +1,6 @@
 const express = require('express')
 const request = require('request')
 const router = express.Router()
-//const xml2js = require('xml2js');
-const soap = require('soap');
 
 const APP_TITLE = process.env.APP_TITLE
 const API_GATEWAY = process.env.API_GATEWAY

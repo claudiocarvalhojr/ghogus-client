@@ -25,7 +25,6 @@
     "passport-email": "0.0.3",
     "passport-local": "^1.0.0",
     "request": "^2.88.2",
-    "soap": "^0.31.0",
-    "xml2js": "^0.4.23"
+    "soap": "^0.31.0"
   }
 }

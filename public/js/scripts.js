@@ -53,6 +53,20 @@ $(document).ready(function () {
     //     $('#btnSiteSearch').css('width', '75px')
     // });
 
+    $('#btnFreightCalculation').on('click', function() {
+        // if ($('#freightCalculation').is(':empty')) {
+        // if ($('#freightCalculation').val() === '') {
+        //     // $('#freightCalculation').css('color','red')
+        //     // $('#freightCalculation').val('CEP inválido!')
+        //     alert('Elemento vazio!' + $('#freightCalculation').val());
+        // } else {
+        //     document.forms['formFreightCalculationCart'].submit();
+        // }
+        if ($('#freightCalculation').val() !== '') {
+            document.forms['formFreightCalculationCart'].submit();
+        }
+    })
+
     function alertMessage(id, message) {
         $(id).html(message)
         // $(id).fadeIn(1000).delay(1000).fadeOut(1000);
