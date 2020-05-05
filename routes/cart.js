@@ -140,8 +140,8 @@ module.exports = () => {
 
                         // add o token ao cookie e define a vida últil dele: 60mim (teste)
                         // let ageSessionId = ((((1000 * 60) * 60) * 24) * 5)
-                        // let ageSessionId = ((1000 * 30) * 1)
-                        let ageSessionId = ((1000 * 60) * 2)
+                        let ageSessionId = ((1000 * 30) * 1)
+                        // let ageSessionId = ((1000 * 60) * 2)
                         // let ageSessionId = ((1000 * 60) * 5)
                         res.cookie('sessionId', JSON.parse(result.body).token, { maxAge: ageSessionId })
                         let sessionId = JSON.parse(result.body).token
@@ -154,6 +154,10 @@ module.exports = () => {
                             if (result.statusCode == 200) {
                                 let product = null
                                 if (JSON.parse(result.body).length > 0) {
+
+                                    // product = getProduct(sku)
+                                    // console.log('product: ' + product)
+
                                     product = JSON.parse(result.body)[0]
                                     let productId = mongoose.Types.ObjectId(product._id);
 
@@ -399,7 +403,7 @@ module.exports = () => {
                                     goCart(req, res, cart, null)
                                 }
                             })
-                            return console.log('get/frete/error: ' + error) 
+                            return console.log('get/frete/error: ' + error)
                         }
                         // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
                         let freight = {
@@ -428,10 +432,28 @@ module.exports = () => {
             }
         }
     })
-    
+
     return router
 
 }
+
+// function getProduct(sku) {
+//     // busca o produto para add ao cart (através do sku vindo da PDP)
+//     let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
+//     log('get/cart/product...')
+//     request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
+//         if (error) { console.log('get/cart/product/error: ' + error) }
+//         if (result.statusCode == 200) {
+//             let product = null
+//             if (JSON.parse(result.body).length > 0) {
+//                 product = JSON.parse(result.body)[0]
+//                 console.log('product: ' + product)
+//                 return product
+//             }
+//         }
+//     })
+//     return null
+// }
 
 function goCart(req, res, cart, freight) {
     if (req.isAuthenticated()) {
