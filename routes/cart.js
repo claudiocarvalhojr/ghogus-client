@@ -140,8 +140,9 @@ module.exports = () => {
 
                         // add o token ao cookie e define a vida últil dele: 60mim (teste)
                         // let ageSessionId = ((((1000 * 60) * 60) * 24) * 5)
-                        let ageSessionId = ((1000 * 30) * 1)
-                        // let ageSessionId = ((1000 * 60) * 2)
+                        // let ageSessionId = ((1000 * 30) * 1)
+                        // let ageSessionId = ((1000 * 60) * 1)
+                        let ageSessionId = ((1000 * 60) * 2)
                         // let ageSessionId = ((1000 * 60) * 5)
                         res.cookie('sessionId', JSON.parse(result.body).token, { maxAge: ageSessionId })
                         let sessionId = JSON.parse(result.body).token
@@ -172,7 +173,7 @@ module.exports = () => {
                                         json: {
                                             'sessionId': sessionId,
                                             'isLogged': authenticated,
-                                            'isValid': true,
+                                            'isActive': true,
                                             'isGift': false,
                                             'voucher': null,
                                             'postalCode': null,
@@ -199,7 +200,7 @@ module.exports = () => {
 
                                             // busca o cart recém criado e exibe a página do cart
                                             let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
-                                            log('get/cart/search...')
+                                            log(' 1) get/cart/search...')
                                             request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
                                                 if (error) { return console.log('get/cart/search/error: ' + error) }
                                                 if (result.statusCode == 200) {
@@ -245,7 +246,7 @@ module.exports = () => {
                             // busca o cart através do sessionId
                             let sessionId = req.cookies.sessionId
                             let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
-                            log('get/cart/search...')
+                            log('2) get/cart/search...')
                             request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
                                 if (error) { return console.log('get/cart/search/error: ' + error) }
                                 if (result.statusCode == 200) {

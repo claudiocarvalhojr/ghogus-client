@@ -140,12 +140,46 @@ module.exports = (passport) => {
         if (error) { return console.log('get/login/error: ' + error) }
         if (response.body.auth) {
           req.session.token = response.body.token
-          // res.cookie('sessionId', response.body.token)
+
+          console.log('BODY: ' + JSON.stringify(response.body))
+
+          if (req.cookies.sessionId !== undefined) {
+            let sessionId = req.cookies.sessionId
+            let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
+            log('get/cart/search...')
+            request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
+              if (error) { return console.log('get/cart/search/error: ' + error) }
+              if (result.statusCode == 200) {
+                let cart = JSON.parse(result.body)[0]
+                if (cart !== undefined && cart.products.length == 0)
+                  cart = null
+                if (cart != null && cart.isLogged == false && cart.isActive == true) {
+                  request.patch(API_GATEWAY + '/cart/' + cart._id, {
+                    json: {
+                      'isLogged': true,
+                      'customer': req.user._id,
+                      'changeDate': new Date().toLocaleString()
+                    }
+                  }, (error, response, body) => {
+                    if (error) { return console.log('patch/cart/error: ' + error) }
+                  })
+                }
+              }
+            })
+          }
+
+          console.log('COOKIES: ' + JSON.stringify(req.cookies))
+
           res.redirect('/')
         }
       })
     }
   )
+
+  router.get('/clear-session', (req, res, next) => {
+    res.clearCookie('sessionId')
+    res.redirect('/')
+  })
 
   /* HOME */
   // router.get('/home', (req, res, next) => {
