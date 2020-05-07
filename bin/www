@@ -112,7 +112,8 @@ function onListening() {
   }
 
   function executar() {
-    return new Promise(resolve => setTimeout(() => resolve(imprimir()), 2000))
+    let promise = new Promise(resolve => setTimeout(() => resolve(imprimir()), 1000))
+    return promise
   }
 
   function executar2() {
@@ -120,12 +121,12 @@ function onListening() {
   }
 
   async function getProduct() {
-    await executar2()
+    await executar()
   }
 
   async function cartManager() {
     console.log('antes do start...')
-    await getProduct()
+    let product = await getProduct()
     console.log('...depois do start')
   }
 
