@@ -184,7 +184,7 @@ module.exports = () => {
 
 }
 
-function getProduct(sku) {
+async function getProduct(sku) {
     // busca o produto para add ao cart (através do sku vindo da PDP)
     let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
     log('get/cart/product...')
@@ -202,7 +202,7 @@ function getProduct(sku) {
     return null
 }
 
-async function  cartManager() {
+async function cartManager(req, res, next) {
     log('post/cart...')
     let registrationDate = new Date()
     let user = req.user
@@ -251,18 +251,18 @@ async function  cartManager() {
                     let sessionId = JSON.parse(result.body).token
 
                     // busca o produto para add ao cart (através do sku vindo da PDP)
-                    // let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
-                    // log('get/cart/product...')
-                    // request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-                    //     if (error) { return console.log('get/cart/product/error: ' + error) }
-                    //     if (result.statusCode == 200) {
-                    //         let product = null
-                    //         if (JSON.parse(result.body).length > 0) {
+                    let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
+                    log('get/cart/product...')
+                    request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
+                        if (error) { return console.log('get/cart/product/error: ' + error) }
+                        if (result.statusCode == 200) {
+                            let product = null
+                            if (JSON.parse(result.body).length > 0) {
 
-                                product = await new Promise(getProduct(sku))
+
+                                // product = await getProduct(sku)
+                                product = JSON.parse(result.body)[0]
                                 // console.log('product: ' + product)
-
-                                // product = JSON.parse(result.body)[0]
 
                                 let productId = mongoose.Types.ObjectId(product._id);
 
@@ -304,9 +304,9 @@ async function  cartManager() {
                                         getLastCartActiveBySession(sessionId, req, res, next)
                                     }
                                 })
-                            // }
-                        // }
-                    // })
+                            }
+                        }
+                    })
                 }
             })
         }

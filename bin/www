@@ -107,4 +107,48 @@ function onListening() {
   // }  
   // fn('Ana').then(string => console.log(string));
 
+  function imprimir() {
+    console.log('teste de async/await...')
+  }
+
+  function executar() {
+    return new Promise(resolve => setTimeout(() => resolve(imprimir()), 2000))
+  }
+
+  function executar2() {
+    return new Promise(resolve => resolve(imprimir()))
+  }
+
+  async function getProduct() {
+    await executar2()
+  }
+
+  async function cartManager() {
+    console.log('antes do start...')
+    await getProduct()
+    console.log('...depois do start')
+  }
+
+  cartManager()
+
+  async function sleep(forHowLong) {
+    function timeout(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms))
+    }
+    await timeout(forHowLong)
+  }
+
+  async function countFromThree() {
+    await sleep(0)
+    console.log(3)
+    await sleep(1000)
+    console.log(2)
+    await sleep(1000)
+    console.log(1)
+    await sleep(1000)
+    console.log('DONE')
+  }
+
+  // countFromThree()
+
 }
