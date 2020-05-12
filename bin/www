@@ -88,15 +88,6 @@ function onListening() {
     : 'port ' + addr.port;
   debug('Listening on ' + bind);
 
-  // console.log('...start...');
-  // const p1 = async() => new Promise((resolve, reject) => {
-  //   // setTimeout(() => resolve('testando...'), 2000)
-  //   resolve('testando...')
-  // })  
-  // const p2 = p1()
-  // p2.then(string => console.log(string + ' bla bla bla'))
-  // console.log('...end...')
-
   // const fnAtrasada = async() => new Promise(res => {
   //   setTimeout(() => res('Olá'), 2000)
   // })
@@ -108,48 +99,97 @@ function onListening() {
   // fn('Ana').then(string => console.log(string));
 
   function imprimir() {
-    console.log('teste de async/await...')
+    console.log('...teste de async/await...')
   }
 
-  function executar() {
+  async function executar() {
     let promise = new Promise(resolve => setTimeout(() => resolve(imprimir()), 1000))
     return promise
   }
 
-  function executar2() {
-    return new Promise(resolve => resolve(imprimir()))
-  }
+  // function executar2() {
+  //   return new Promise(resolve => resolve(imprimir()))
+  // }
+
+  // async function getProduct() {
+  //   await executar()
+  // }
 
   async function getProduct() {
-    await executar()
+    return new Promise(resolve => setTimeout(() => resolve(imprimir()), 1000))
+  }
+
+  function listProducts() {
+    const fetch = require('node-fetch')
+    return fetch('http://localhost:3000/products')
+      .then(checkStatus)
+      .then(res => res.json())
+      .catch(err => console.error('ERROR: ' + err))
+  }
+
+  async function getProduct2() {
+    const fetch = require('node-fetch')
+    // return new Promise(resolve => resolve(listProducts()))
+    return new Promise(resolve => resolve(
+      fetch('http://localhost:3000/products')
+        .then(checkStatus)
+        .then(res => res.json())
+        .catch(err => console.error('ERROR: ' + err))
+    ))
+  }
+
+  async function getProduct3() {
+    let json = { id: 123, title: 'testando promises' }
+    return json
   }
 
   async function cartManager() {
-    console.log('antes do start...')
-    let product = await getProduct()
-    console.log('...depois do start')
+    console.log('start...')
+    // await getProduct()
+    let products = await getProduct2()
+    products.forEach(function (product) {
+      console.log(product.sku)
+    })
+    // console.log('id: ' + product.id + ' | title: ' + product.title)
+    // const promise = Promise.resolve(getProduct3())
+    // promise.then(val => console.log(val.id))
+    console.log('...end')
   }
 
-  cartManager()
+  // cartManager()
 
-  async function sleep(forHowLong) {
-    function timeout(ms) {
-      return new Promise(resolve => setTimeout(resolve, ms))
-    }
-    await timeout(forHowLong)
-  }
-
-  async function countFromThree() {
-    await sleep(0)
-    console.log(3)
-    await sleep(1000)
-    console.log(2)
-    await sleep(1000)
-    console.log(1)
-    await sleep(1000)
-    console.log('DONE')
-  }
-
+  // async function sleep(forHowLong) {
+  //   function timeout(ms) {
+  //     return new Promise(resolve => setTimeout(resolve, ms))
+  //   }
+  //   await timeout(forHowLong)
+  // }
+  // async function countFromThree() {
+  //   await sleep(0)
+  //   console.log(3)
+  //   await sleep(1000)
+  //   console.log(2)
+  //   await sleep(1000)
+  //   console.log(1)
+  //   await sleep(1000)
+  //   console.log('DONE')
+  // }
   // countFromThree()
+
+  function checkStatus(res) {
+    // console.log('CODE: ' + res.status + ', TEXT: ' + res.statusText)
+    if (res.ok)
+      return res
+  }
+  // const fetch = require('node-fetch')
+  // fetch('http://localhost:3000/products')
+  //   .then(checkStatus)
+  //   .then(res => res.json())
+  //   .then(products => {
+  //     products.forEach(function (product) {
+  //       console.log(product.sku)
+  //     })
+  //   })
+  //   .catch(err => console.error('ERROR: ' + err))
 
 }

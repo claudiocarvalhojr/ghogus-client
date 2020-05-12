@@ -1,5 +1,5 @@
-<% if (!docs || docs.length == 0) { %>
+<% if (!users || users.length == 0) { %>
     <p>Nenhum usuário cadastrado!</p>
-<% } else { docs.forEach(function(user) { %>
+<% } else { users.forEach(function(user) { %>
     <p>Nome: <%= user.firstName %> | Sobrenome: <%= user.lastName %> | Nascimento: <%= user.birthDate %> | E-mail: <%= user.email %> | Telefone: <%= user.phoneNumber %></p>
 <% })} %>

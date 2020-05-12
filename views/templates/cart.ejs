@@ -35,7 +35,7 @@
                                         <% } %>
                                     <td style="width: 10%; padding-top: 20px;">
                                         <form action="/cart" method="POST" name="formUpdateQtyItemCart">
-                                            <input type="hidden" name="updateQtyItemCart" value="<%= product.sku %>">
+                                            <input type="hidden" name="updateCartItemQtySKU" value="<%= product.sku %>">
                                             <select name="qty" class="form-control" style="width: 60px;" onchange="this.form.submit()">
                                                 <option value="1" <% if( product.qty == 1) { %>selected <% } %> >1</option>
                                                 <option value="2" <% if( product.qty == 2) { %>selected <% } %> >2</option>
@@ -46,7 +46,7 @@
                                         </form>
                                     <td style="width: 10%; padding-top: 20px; font-size: large; font-weight: bold;">
                                         <form action="/cart" method="POST" name="formRemoveItemCart">
-                                            <input type="hidden" name="removeItemCart" value="<%= product.sku %>">
+                                            <input type="hidden" name="removeCartItemSKU" value="<%= product.sku %>">
                                             <input type="submit" name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
                                         </form>
                                     </td>
@@ -74,12 +74,8 @@
                                     <form action="/cart" method="POST" name="formFreightCalculationCart">
                                         <div class="row">
                                             <div class="float-left" style="width: 77%;">
-                                                <input type="hidden" name="freightCalculationCart" value="<%= cart._id %>">
-                                            <% if (resume.freight != null) { %>
-                                                <input type="text" class="form-control" style="width: 100%;" id="freightCalculation" name="freightCalculation" placeholder="Digite o CEP" value="<%= resume.freight.cep %>" required>
-                                            <% } else { %>
-                                                <input type="text" class="form-control" style="width: 100%;" id="freightCalculation" name="freightCalculation" placeholder="Digite o CEP" required>
-                                            <% } %>
+                                                <input type="hidden" name="freightCartId" value="<%= cart._id %>">
+                                                <input type="text" class="form-control" style="width: 100%;" id="postalCode" name="postalCode" placeholder="Digite o CEP" value="<%= cart.freight.postalCode %>" required>
                                             </div>
                                             <div class="float-right" style="width: 23%; padding-left: 5px;">
                                                 <button type="button" class="btn btn-dark" id="btnFreightCalculation"> > </button>
@@ -88,9 +84,9 @@
                                     </form>
                                 </td>
                             </tr>
-                            <% if (resume.freight != null) { %>
+                            <% if (cart.freight.postalCode != null) { %>
                                 <tr>
-                                    <td colspan="2" style="text-align: right;"><%= resume.freight.deliveryTime %> dias úteis - <span style="font-weight: bold;">R$ <%= resume.freight.value %></span></td>
+                                    <td colspan="2" style="text-align: right;"><%= cart.freight.deliveryTime %> dias úteis - <span style="font-weight: bold;">R$ <%= cart.freight.value %></span></td>
                                 </tr>
                             <% } %>
                             <tr>

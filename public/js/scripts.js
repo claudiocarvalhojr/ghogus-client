@@ -15,7 +15,7 @@ $(document).ready(function () {
 
     // mask
     $('#btnNewRegister').hide();
-    $('#freightCalculation').mask('00000-000');
+    $('#postalCode').mask('00000-000');
     $('#birthDate').mask('00/00/0000');
     $('#phoneNumber').mask('(00) 00000-0000');
     $('#price').mask('#.##0,00', { reverse: true });
@@ -54,15 +54,15 @@ $(document).ready(function () {
     // });
 
     $('#btnFreightCalculation').on('click', function() {
-        // if ($('#freightCalculation').is(':empty')) {
-        // if ($('#freightCalculation').val() === '') {
-        //     // $('#freightCalculation').css('color','red')
-        //     // $('#freightCalculation').val('CEP inválido!')
-        //     alert('Elemento vazio!' + $('#freightCalculation').val());
+        // if ($('#postalCode').is(':empty')) {
+        // if ($('#postalCode').val() === '') {
+        //     // $('#postalCode').css('color','red')
+        //     // $('#postalCode').val('CEP inválido!')
+        //     alert('Elemento vazio!' + $('#postalCode').val());
         // } else {
         //     document.forms['formFreightCalculationCart'].submit();
         // }
-        if ($('#freightCalculation').val() !== '') {
+        if ($('#postalCode').val() !== '') {
             document.forms['formFreightCalculationCart'].submit();
         }
     })

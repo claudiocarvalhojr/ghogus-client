@@ -1,104 +1,42 @@
+const utils = require('../utils');
+const manager = require('../manager');
 const express = require('express')
-const request = require('request')
-const soap = require('soap');
-let mongoose = require('mongoose')
 const router = express.Router()
+const mongoose = require('mongoose')
+const soap = require('soap');
+const LIMIT_QTY_ITEM_CART = process.env.LIMIT_QTY_ITEM_CART
 
-const limitQtyItemCart = 5
-
-const APP_TITLE = process.env.APP_TITLE
-const API_GATEWAY = process.env.API_GATEWAY
-
-var isAuthenticated = (req, res, next) => {
-    if (req.isAuthenticated())
-        return next()
-    res.redirect('/')
-}
-
-var isNotAuthenticated = (req, res, next) => {
-    if (!req.isAuthenticated())
-        return next()
-    res.redirect('/home')
-}
-
-var isTokenValid = (req, res, next) => {
-    request.get(API_GATEWAY + '/check?token=' + req.session.token, (error, result) => {
-        if (error) { return console.log('get/check/error: ' + error) }
-        if (JSON.parse(result.body).auth)
-            return next()
-        req.session.token = null
-        req.logout()
-        // res.redirect('/')
-        // res.redirect('/logout')
-        if (req.session.register) {
-            req.session.register = false
-            return res.render('index', {
-                page: './templates/login/form',
-                title: APP_TITLE,
-                menu: 'small',
-                message: null
-            })
-        }
-        res.render('index', {
-            page: './templates/login/form',
-            title: APP_TITLE,
-            menu: 'small',
-            message: 'Sua sessão expirou!'
-        })
-    })
-}
-
-function log(message) {
-    let data = new Date()
-    console.log('****************************************')
-    console.log(data.toLocaleString() + ' - ' + message)
-    // console.log('****************************************')
-}
-
-function problem(res, codeError) {
-    if (req.isAuthenticated()) {
-        return res.render('index', {
-            page: './templates/structure/error',
-            title: APP_TITLE,
-            menu: 'full',
-            code_error: codeError
-        })
-    }
-    res.render('index', {
-        page: './templates/structure/error',
-        title: APP_TITLE,
-        menu: 'small',
-        code_error: codeError
-    })
-}
-
-function renderCart(req, res, cart, freight) {
+let renderCart = async (req, res, cart) => {
+    utils.log('renderCart...')
+    if (cart != null && cart.products.length == 0)
+        cart = null
     if (req.isAuthenticated()) {
         return res.render('index', {
             page: './templates/cart',
-            title: APP_TITLE,
+            title: process.env.APP_TITLE,
             menu: 'full',
             cart: cart,
-            resume: resume(cart, freight)
+            resume: cartResume(cart)
         })
     }
     return res.render('index', {
         page: './templates/cart',
-        title: APP_TITLE,
+        title: process.env.APP_TITLE,
         menu: 'small',
         cart: cart,
-        resume: resume(cart, freight)
+        resume: cartResume(cart)
     })
 }
 
-function resume(cart, freight) {
+let cartResume = (cart) => {
+    utils.log('cartResume...')
     let subtotal = 0.00
     let vFreight = 0.00
     let total = 0.00
     let reprice = 0.00
     if (cart != null) {
         let products = cart.products
-        if (products.length > 0) {
+        if (products !== undefined && products != null && products.length > 0) {
             products.forEach(function (product) {
                 if (product.discount > 0) {
                     reprice = (parseFloat(product.price) - (((parseFloat(product.price) / 100) * product.discount)))
@@ -108,10 +46,8 @@ function resume(cart, freight) {
                     subtotal += product.price * product.qty
                 }
             })
-            if (freight != null) {
-                // console.log('vFreight: ' + freight.value)
-                vFreight = freight.value.replace(',', '.')
-                // console.log('vFreight: ' + vFreight)
+            if (cart.freight.value !== undefined) {
+                vFreight = cart.freight.value.replace(',', '.')
                 total = subtotal + parseFloat(vFreight)
             } else {
                 total = subtotal
@@ -120,62 +56,306 @@ function resume(cart, freight) {
     }
     let resume = {
         'subtotal': subtotal,
-        'freight': freight,
         'total': total
     }
     return resume
 }
 
-function getLastCartActiveBySession(sessionId, req, res, next) {
-    let findCart = { values: { 'sessionId': sessionId, 'isActive': true }, fields: 'sessionId', ordination: 1, limit: 1 }
-    log('get/cart/session/search...')
-    request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
-        if (error) { return console.log('get/cart/session/search/error: ' + error) }
-        if (result.statusCode == 200) {
-            let cart = JSON.parse(result.body)[0]
-            if (cart.products.length == 0)
-                cart = null
-            renderCart(req, res, cart, null)
+let cartManager = async (req, res, next) => {
+    utils.log('cartManager...')
+    let registrationDate = new Date()
+    let user = req.user
+    let sku = null
+    let cartId = null
+    let addCartItem = false
+    let updateCartItemQty = false
+    let qtyItemCart = 0
+    let removeCartItem = false
+    let freightCart = false
+    let postalCode = null
+    if (req.body.addCartItemSKU !== undefined) {
+        sku = req.body.addCartItemSKU
+        addCartItem = true
+    }
+    else if (req.body.updateCartItemQtySKU !== undefined) {
+        sku = req.body.updateCartItemQtySKU
+        updateCartItemQty = true
+        qtyItemCart = req.body.qty
+    }
+    else if (req.body.removeCartItemSKU != undefined) {
+        sku = req.body.removeCartItemSKU
+        removeCartItem = true
+    }
+    else if (req.body.freightCartId != undefined) {
+        cartId = req.body.freightCartId
+        freightCart = true
+        postalCode = req.body.postalCode
+    }
+    // console.log('sessionId: ', req.cookies.sessionId)
+    console.log('add: ', addCartItem)
+    console.log('update: ', updateCartItemQty)
+    console.log('remove: ', removeCartItem)
+    console.log('freight: ', freightCart)
+    // console.log('postalCode: ', postalCode)
+    // console.log('sku: ', sku)
+    // console.log('cartId: ', cartId)
+    if (req.cookies.sessionId === undefined) {
+        utils.log('there is no sessionId!')
+        if (addCartItem) {
+
+            let sessionId = await manager.find('/session-id')
+            // res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 60) * 24) * 7) })
+            res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 1) * 1) * 1) })
+        
+            let product = await manager.find('/product/sku/' + sku)
+
+            if (user !== undefined)
+                user = { '_id': user._id }
+            else
+                user = null
+
+            let newCart = {
+                'sessionId': sessionId.token,
+                'isActive': true,
+                'isGift': false,
+                'voucher': null,
+                'freight': {
+                    'postalCode': null,
+                    'value': '0,0',
+                    'deliveryTime': 0
+                },
+                'customer': user,
+                'products': [{
+                    '_id': mongoose.Types.ObjectId(product._id),
+                    'sku': product.sku,
+                    'title': product.title,
+                    'price': product.price,
+                    'discount': product.discount,
+                    'online': product.online,
+                    'saleable': product.saleable,
+                    'qty': 1,
+                    'images': [{
+                        'name': product.images[0].name
+                    }]
+                }],
+                'registrationDate': registrationDate.toLocaleString(),
+                'changeDate': registrationDate.toLocaleString()
+            }
+            await manager.send('post', '/cart', newCart)
+            carts = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': sessionId.token, 'isActive': true }}))
+            req.cart = carts[0]
+            renderCart(req, res, carts[0])
+        } else {
+            utils.log('Não existe sessionId e as ações são inválidas (update, remove or freight)')
+            console.log('sessionId: ', req.cookies.sessionId)
+            console.log('addCartItem: ', addCartItem)
+            console.log('updateCartItemQty: ', updateCartItemQty)
+            console.log('freightCart: ', freightCart)
+            console.log('sku: ', sku)
+            console.log('cartId: ', cartId)
+            renderCart(req, res, null)
         }
+    } else {
+        utils.log('sessionId already exists!')
+        if (addCartItem == true || updateCartItemQty == true || removeCartItem == true) {
+            let carts = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isActive': true }}))
+            let isExists = false
+            let count = 0
+            let position = 0
+            let compare = null
+            while (count < carts[0].products.length) {
+                compare = carts[0].products[count].sku.localeCompare(sku)
+                if (compare == 0 && !isExists) {
+                    isExists = true
+                    position = count
+                }
+                count++
+            }
+            // item não existe, então add novo item ao cart
+            if (!isExists && addCartItem) {
+                utils.log('patch/cart/add/product...')
+                let product = await manager.find('/product/SKU/' + sku)
+                let newProduct = {
+                    '_id': mongoose.Types.ObjectId(product._id),
+                    'sku': product.sku,
+                    'title': product.title,
+                    'price': product.price,
+                    'discount': product.discount,
+                    'online': product.online,
+                    'saleable': product.saleable,
+                    'qty': 1,
+                    'images': [{
+                        'name': product.images[0].name
+                    }]
+                }
+                carts[0].products.push(newProduct)
+                let newCartItem = {
+                    'products': carts[0].products,
+                    'changeDate': new Date().toLocaleString()
+                }
+                await manager.send('patch', '/cart/push/' + carts[0]._id, newCartItem)
+                renderCart(req, res, carts[0])
+            }
+            // item existe, e está sendo add novamente ou a opção de qty foi alterada no cart, então atualiza a quantidade respeitando o limite máximo
+            else if (isExists && (addCartItem && carts[0].products[position].qty < LIMIT_QTY_ITEM_CART || updateCartItemQty && qtyItemCart <= LIMIT_QTY_ITEM_CART)) {
+                utils.log('patch/cart/update/product...')
+                if (addCartItem)
+                    carts[0].products[position].qty++
+                else if (updateCartItemQty)
+                    carts[0].products[position].qty = qtyItemCart
+                let updCartItemQty = {
+                    'products.$.qty': carts[0].products[position].qty,
+                    'changeDate': new Date().toLocaleString()
+                }
+                await manager.send('patch', '/cart/set/' + carts[0]._id + '_' + carts[0].products[position]._id, updCartItemQty)
+                renderCart(req, res, carts[0])
+            }
+            // item existe e será removido
+            else if (isExists && removeCartItem) {
+                utils.log('patch/cart/remove/product...')
+                let remCartItem = { 'products': { '_id': carts[0].products[position]._id } }
+                await manager.send('patch', '/cart/pull/' + carts[0]._id, remCartItem)
+                carts[0].products.splice(position, 1)
+                renderCart(req, res, carts[0])
+            }
+            // item existe, mas já atingiu o limite máximo para o item
+            else if (isExists && addCartItem && carts[0].products[position].qty == LIMIT_QTY_ITEM_CART) {
+                utils.log('patch/cart/update/product/qtyMax...')
+                renderCart(req, res, carts[0])
+            }
+            // analisar um pouco mais quais as possibilidades que levam a ocorrer este problema (chegar até aqui)
+            else {
+                utils.log('Houve algum problema! (avaliar)')
+                utils.log('Existe o sessionId, cart está vazio e as ações são inválidas (add, update, remove or freight) ')
+                console.log('isExists: ', isExists)
+                console.log('sessionId: ', req.cookies.sessionId)
+                console.log('addCartItem: ', addCartItem)
+                console.log('updateCartItemQty: ', updateCartItemQty)
+                console.log('freightCart: ', freightCart)
+                console.log('sku: ', sku)
+                console.log('cartId: ', cartId)
+                renderCart(req, res, null)
+            }
+        }
+        // 
+        else if (freightCart) {
+            utils.log('cart/freight-calculation...')
+            let cart = await manager.find('/cart/' + cartId)
+            if (cart.freight.postalCode == null || cart.freight.postalCode.localeCompare(postalCode) != 0) {
+                let freight = await freightCalculation(postalCode)
+                let updateCartPostalCode = { 'freight': { 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime }, 'changeDate': new Date().toLocaleString() }
+                await manager.send('patch', '/cart/' + cart._id, updateCartPostalCode)
+                cart.freight.postalCode = postalCode
+                cart.freight.value = freight.value
+                cart.freight.deliveryTime = freight.deliveryTime
+                renderCart(req, res, cart)
+            }
+            // else  { console.log('ceps iguais: ' + cart.freight.postalCode + ' | ' + postalCode) }
+        } else {
+            utils.log('O sessionId expirou e as ações são inválidas (add, update, remove or freight)')
+            console.log('sessionId: ', req.cookies.sessionId)
+            console.log('addCartItem: ', addCartItem)
+            console.log('updateCartItemQty: ', updateCartItemQty)
+            console.log('freightCart: ', freightCart)
+            console.log('sku: ', sku)
+            console.log('cartId: ', cartId)
+            renderCart(req, res, null)
+        }
+    }
+}
+
+let freightCalculation = async (postalCode) => {
+    utils.log('freightCalculation...')
+    return new Promise((resolve, reject) => {
+        let freight = null
+        postalCode = postalCode.replace('-', '')
+        let url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl'
+        let params = {
+            nCdEmpresa: '',
+            sDsSenha: '',
+            // nCdServico: '04014', // SEDEX
+            nCdServico: '04510', // PAC
+            sCepOrigem: '93950000',
+            sCepDestino: postalCode,
+            nVlPeso: '1',
+            nCdFormato: 3,
+            nVlComprimento: '0',
+            nVlAltura: '0',
+            nVlLargura: '0',
+            nVlDiametro: '0',
+            sCdMaoPropria: 'N',
+            nVlValorDeclarado: '0',
+            sCdAvisoRecebimento: 'N'
+        }
+        soap.createClient(url, (err, client) => {
+            if (err) {
+                console.error('Error 1: ' + err)
+                // freight = {
+                //     'postalCode': postalCode,
+                //     'value': '0,0',
+                //     'deliveryTime': 0
+                // }
+                // reject(freight)
+            }
+            else {
+                client.CalcPrecoPrazo(params, (err, result) => {
+                    if (err) {
+                        console.error('Error 2: ' + err)
+                        // freight = {
+                        //     'postalCode': postalCode,
+                        //     'value': '0,0',
+                        //     'deliveryTime': 0
+                        // }
+                        // reject(freight)
+                    }
+                    else {
+                        // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
+                        freight = {
+                            'postalCode': postalCode,
+                            'value': result.CalcPrecoPrazoResult.Servicos.cServico[0].Valor,
+                            'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega
+                        }
+                        resolve(freight)
+                    }
+                })
+            }
+        })
     })
 }
 
-function getLastCartActiveByUser(req, res, next) {
-    let userId = req.user._id
-    let findCart = { values: { 'customer': userId, 'isActive': true }, fields: '_id', ordination: 1, limit: 1 }
-    log('get/cart/search/logged...')
-    request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
-        if (error) { return console.log('get/cart/search/logged/error: ' + error) }
-        if (result.statusCode == 200) {
-            let cart = JSON.parse(result.body)[0]
-            if (cart.products.length == 0)
-                cart = null
-            renderCart(req, res, cart, null)
+let findCart = async (req, res, next) => {
+    utils.log('get/cart...')
+    // busca o cart pelo user e exibe a página do cart (user logged)
+    if (req.isAuthenticated()) {
+        utils.log('get/cart/search/logged...')
+        let carts = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isActive': true }}))
+        if (carts[0] !== undefined)
+            renderCart(req, res, carts[0])
+        else
+            renderCart(req, res, null)
+    } else {
+        // SessionId expirou e não existe cart
+        if (req.cookies.sessionId === undefined) {
+            utils.log('SessionId expirou e não existe cart!')
+            renderCart(req, res, null)
         }
-    })
+        // busca o cart pela session e exibe a página do cart
+        else {
+            utils.log('get/cart/last/session...')
+            let carts = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isActive': true }}))
+            renderCart(req, res, carts[0])
+        }
+    }
 }
 
 module.exports = () => {
 
-    /* CART */
+    /* FIND CART */
     router.get('/cart', (req, res, next) => {
-        log('get/cart...')
-        if (req.isAuthenticated()) {
-                // busca o cart pelo user e exibe a página do cart
-                getLastCartActiveByUser(req, res, next)
-        } else {
-            if (req.cookies.sessionId === undefined) {
-                log('SessionId expirou e não há o que consultar!')
-                renderCart(req, res, null, null)
-            }
-            else {
-                // busca o cart pela session e exibe a página do cart
-                getLastCartActiveBySession(req.cookies.sessionId, req, res, next)
-            }
-        }
+        findCart(req, res, next)
     })
 
-    /* CREATE CART - ADD, UPDATE, FREIGHT */
+    /* CREATE CART - ADD, UPDATE, REMOVE and FREIGHT */
     router.post('/cart', (req, res, next) => {
         cartManager(req, res, next)
     })
@@ -184,334 +364,3 @@ module.exports = () => {
 
 }
 
-async function getProduct(sku) {
-    // busca o produto para add ao cart (através do sku vindo da PDP)
-    let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
-    log('get/cart/product...')
-    request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-        if (error) { console.log('get/cart/product/error: ' + error) }
-        if (result.statusCode == 200) {
-            let product = null
-            if (JSON.parse(result.body).length > 0) {
-                product = JSON.parse(result.body)[0]
-                console.log('product: ' + product)
-                return product
-            }
-        }
-    })
-    return null
-}
-
-async function cartManager(req, res, next) {
-    log('post/cart...')
-    let registrationDate = new Date()
-    let user = req.user
-    let sku = null
-    let cartId = null
-    let addItemCart = false
-    let updateQtyItemCart = false
-    let qtyItemCart = 0
-    let removeItemCart = false
-    let freightCalculationCart = false
-    if (req.body.addItemCart !== undefined) {
-        sku = req.body.addItemCart
-        addItemCart = true
-    }
-    else if (req.body.updateQtyItemCart !== undefined) {
-        sku = req.body.updateQtyItemCart
-        updateQtyItemCart = true
-        qtyItemCart = req.body.qty
-    }
-    else if (req.body.removeItemCart != undefined) {
-        sku = req.body.removeItemCart
-        removeItemCart = true
-    }
-    else if (req.body.freightCalculationCart != undefined) {
-        cartId = req.body.freightCalculationCart
-        freightCalculationCart = true
-    }
-
-    // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
-    if (req.cookies.sessionId === undefined) {
-        if (addItemCart) {
-
-            //gera um novo token
-            log('get/cart/session-id...')
-            request.get(process.env.API_GATEWAY + '/session-id', (error, result) => {
-                if (error) { return console.log('get/cart/session-id/error: ' + error) }
-                if (result.statusCode == 200) {
-
-                    // add o token ao cookie e define a vida últil dele: 60mim (teste)
-                    // let ageSessionId = ((((1000 * 60) * 60) * 24) * 5)
-                    // let ageSessionId = ((1000 * 30) * 1)
-                    // let ageSessionId = ((1000 * 60) * 1)
-                    let ageSessionId = ((1000 * 60) * 2)
-                    // let ageSessionId = ((1000 * 60) * 5)
-                    res.cookie('sessionId', JSON.parse(result.body).token, { maxAge: ageSessionId })
-                    let sessionId = JSON.parse(result.body).token
-
-                    // busca o produto para add ao cart (através do sku vindo da PDP)
-                    let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
-                    log('get/cart/product...')
-                    request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-                        if (error) { return console.log('get/cart/product/error: ' + error) }
-                        if (result.statusCode == 200) {
-                            let product = null
-                            if (JSON.parse(result.body).length > 0) {
-
-
-                                // product = await getProduct(sku)
-                                product = JSON.parse(result.body)[0]
-                                // console.log('product: ' + product)
-
-                                let productId = mongoose.Types.ObjectId(product._id);
-
-                                // cria um novo cart, add produto e token ao cart
-                                let authenticated = req.isAuthenticated()
-                                if (user !== undefined)
-                                    user = { '_id': user._id }
-                                else
-                                    user = null
-                                log('post/cart...')
-                                request.post(API_GATEWAY + '/cart', {
-                                    json: {
-                                        'sessionId': sessionId,
-                                        // 'isLogged': authenticated,
-                                        'isActive': true,
-                                        'isGift': false,
-                                        'voucher': null,
-                                        'postalCode': null,
-                                        'customer': user,
-                                        'products': [{
-                                            '_id': productId,
-                                            'sku': product.sku,
-                                            'title': product.title,
-                                            'price': product.price,
-                                            'discount': product.discount,
-                                            'online': product.online,
-                                            'saleable': product.saleable,
-                                            'qty': 1,
-                                            'images': [{
-                                                'name': product.images[0].name
-                                            }]
-                                        }],
-                                        'registrationDate': registrationDate.toLocaleString(),
-                                        'changeDate': registrationDate.toLocaleString()
-                                    }
-                                }, (error, response, body) => {
-                                    if (error) { return console.log('post/cart/error: ' + error) }
-                                    if (response.statusCode == 200) {
-                                        getLastCartActiveBySession(sessionId, req, res, next)
-                                    }
-                                })
-                            }
-                        }
-                    })
-                }
-            })
-        }
-        else {
-            log('Não existe sessionId e as ações são inválidas (update, remove or freight)')
-            console.log('sessionId: ', req.cookies.sessionId)
-            console.log('addItemCart: ', addItemCart)
-            console.log('updateQtyItemCart: ', updateQtyItemCart)
-            console.log('freightCalculationCart: ', freightCalculationCart)
-            console.log('sku: ', sku)
-            console.log('cartId: ', cartId)
-            renderCart(req, res, null, null)
-        }
-    } else {
-        if (addItemCart == true || updateQtyItemCart == true || removeItemCart == true) {
-
-            // verifica se já existe o cookie "session-id" (que contém o token), caso não, cria um novo token e cart
-
-            // busca o produto para add(product)/update(qty)/delete(product) ao cart, através do sku vindo da PDP
-            let findProduct = { values: { sku: sku }, fields: 'sku', ordination: 1, limit: 1 }
-            log('get/cart/product...')
-            request.get(API_GATEWAY + '/product/' + JSON.stringify(findProduct), (error, result) => {
-                if (error) { return console.log('get/cart/product/error: ' + error) }
-                if (result.statusCode == 200) {
-                    let product = null
-                    product = JSON.parse(result.body)[0]
-                    if (JSON.parse(result.body).length > 0) {
-                        product = JSON.parse(result.body)[0]
-                        let productId = mongoose.Types.ObjectId(product._id)
-
-                        // busca o cart através do sessionId
-                        let sessionId = req.cookies.sessionId
-                        let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
-                        log('2) get/cart/search...')
-                        request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
-                            if (error) { return console.log('get/cart/search/error: ' + error) }
-                            if (result.statusCode == 200) {
-                                let cart = JSON.parse(result.body)[0]
-                                if (JSON.parse(result.body).length > 0) {
-                                    let isExists = false
-                                    let count = 0
-                                    let position = 0
-                                    let compare = null
-                                    while (count < cart.products.length) {
-                                        compare = cart.products[count].sku.localeCompare(sku)
-                                        if (compare == 0 && !isExists) {
-                                            isExists = true
-                                            position = count
-                                        }
-                                        count++
-                                    }
-
-                                    // Insert new product to cart
-                                    if (!isExists && addItemCart) {
-                                        // Produto não existe, cria um novo produto e add ao cart
-                                        let newProduct = {
-                                            '_id': productId,
-                                            'sku': product.sku,
-                                            'title': product.title,
-                                            'price': product.price,
-                                            'discount': product.discount,
-                                            'online': product.online,
-                                            'saleable': product.saleable,
-                                            'qty': 1,
-                                            'images': [{
-                                                'name': product.images[0].name
-                                            }]
-                                        }
-
-                                        // TO-DO: remover valor do array cart (splice) caso ocorra erro
-                                        // user cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
-
-                                        cart.products.push(newProduct)
-                                        log('patch/cart/product/push...')
-                                        request.patch(API_GATEWAY + '/cart/push/' + cart._id, {
-                                            json: {
-                                                'products': cart.products,
-                                                'changeDate': new Date().toLocaleString()
-                                            }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('patch/cart/product/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                renderCart(req, res, cart, null)
-                                            }
-                                        })
-                                    }
-
-                                    // Produto existe, update qty product (pela add do mesmo item ou seleção de qty)
-                                    else if (isExists && (addItemCart && cart.products[position].qty < limitQtyItemCart || updateQtyItemCart && qtyItemCart <= limitQtyItemCart)) {
-                                        // Update qty and changeDate
-                                        log('patch/cart/product/set...')
-                                        if (addItemCart)
-                                            cart.products[position].qty++
-                                        else if (updateQtyItemCart)
-                                            cart.products[position].qty = qtyItemCart
-                                        request.patch(API_GATEWAY + '/cart/set/' + cart._id + '_' + cart.products[position]._id, {
-                                            json: {
-                                                'products.$.qty': cart.products[position].qty,
-                                                'changeDate': new Date().toLocaleString()
-                                            }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('patch/cart/product/set/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                renderCart(req, res, cart, null)
-                                            }
-                                        })
-                                    }
-
-                                    // Remove item
-                                    else if (isExists && removeItemCart) {
-                                        log('delete/cart/product/pull...')
-                                        request.patch(API_GATEWAY + '/cart/pull/' + cart._id, {
-                                            json: {
-                                                'products': {
-                                                    '_id': cart.products[position]._id
-                                                }
-                                            }
-                                        }, (error, response, body) => {
-                                            if (error) { return console.log('delete/cart/product/pull/error: ' + error) }
-                                            if (response.statusCode == 200) {
-                                                // TO-DO: remover a busca abaixo ao cart, e substituir por remover valor do array cart (splice)
-                                                // user cart.products.splice(cart.products.indexOf(cart.products[position]._id), 1)
-                                                getLastCartActiveBySession(sessionId, req, res, next)
-                                            }
-                                        })
-                                    }
-
-                                    else {
-                                        // analisar um pouco mais quais as possibilidades levam a ocorrer este problema (chegar até aqui)
-                                        log('Houve algum problema! (avaliar)')
-                                        log('Existe o sessionId, cart está vazio e as ações são inválidas (add, update, remove or freight) ')
-                                        console.log('sessionId: ', req.cookies.sessionId)
-                                        console.log('addItemCart: ', addItemCart)
-                                        console.log('updateQtyItemCart: ', updateQtyItemCart)
-                                        console.log('freightCalculationCart: ', freightCalculationCart)
-                                        console.log('sku: ', sku)
-                                        console.log('cartId: ', cartId)
-                                        renderCart(req, res, cart, null)
-                                    }
-                                }
-                            }
-                        })
-                    }
-                }
-            })
-        }
-
-        // Não fica junto aos demais (add, update e remove) pois a consulta é pelo id do cart e não pelo sku do produto
-        else if (freightCalculationCart == true) {
-            log('cart/freight-calculation...')
-            let cep = req.body.freightCalculation.replace('-', '')
-            let url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl'
-            let args = {
-                nCdEmpresa: '',
-                sDsSenha: '',
-                // nCdServico: '04014', // SEDEX
-                nCdServico: '04510', // PAC
-                sCepOrigem: '93950000',
-                sCepDestino: cep,
-                nVlPeso: '1',
-                nCdFormato: 3,
-                nVlComprimento: '0',
-                nVlAltura: '0',
-                nVlLargura: '0',
-                nVlDiametro: '0',
-                sCdMaoPropria: 'N',
-                nVlValorDeclarado: '0',
-                sCdAvisoRecebimento: 'N'
-            }
-            soap.createClient(url, (error, client) => {
-                client.CalcPrecoPrazo(args, (error, result) => {
-                    if (error) {
-                        request.get(API_GATEWAY + '/cart/' + cartId, (error, result) => {
-                            if (error) { return console.log('get/cart/error: ' + error) }
-                            if (result.statusCode == 200) {
-                                cart = JSON.parse(result.body)
-                                renderCart(req, res, cart, null)
-                            }
-                        })
-                        return console.log('get/frete/error: ' + error)
-                    }
-                    // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
-                    let freight = {
-                        'cep': cep,
-                        'value': result.CalcPrecoPrazoResult.Servicos.cServico[0].Valor,
-                        'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega
-                    }
-                    return request.get(API_GATEWAY + '/cart/' + cartId, (error, result) => {
-                        if (error) { return console.log('get/cart/error: ' + error) }
-                        if (result.statusCode == 200) {
-                            cart = JSON.parse(result.body)
-                            renderCart(req, res, cart, freight)
-                        }
-                    })
-                })
-            })
-        } else {
-            log('O sessionId expirou e as ações são inválidas (add, update, remove or freight)')
-            console.log('sessionId: ', req.cookies.sessionId)
-            console.log('addItemCart: ', addItemCart)
-            console.log('updateQtyItemCart: ', updateQtyItemCart)
-            console.log('freightCalculationCart: ', freightCalculationCart)
-            console.log('sku: ', sku)
-            console.log('cartId: ', cartId)
-            renderCart(req, res, null, null)
-        }
-    }
-}

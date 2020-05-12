@@ -1,368 +1,188 @@
+const utils = require('../utils')
+const manager = require('../manager')
 const express = require('express')
-const request = require('request')
 const router = express.Router()
 
-const APP_TITLE = process.env.APP_TITLE
-const API_GATEWAY = process.env.API_GATEWAY
-
-var isAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated())
-    return next()
-  res.redirect('/')
-}
-
-var isNotAuthenticated = (req, res, next) => {
-  if (!req.isAuthenticated())
-    return next()
-  res.redirect('/')
-}
-
-var isTokenValid = (req, res, next) => {
-  request.get(API_GATEWAY + '/check?token=' + req.session.token, (error, result) => {
-    if (error) { return console.log('get/check/error: ' + error) }
-    if (JSON.parse(result.body).auth) {
-      return next()
+let productsHome = async (req, res) => {
+    utils.log('index... ')
+    let products = await manager.find('/products')
+    if (req.isAuthenticated()) {
+        return res.render('index', {
+            page: './templates/home',
+            title: process.env.APP_TITLE,
+            menu: 'full',
+            products: products
+        })
     }
-    req.session.token = null
-    req.logout()
-    // res.redirect('/')
-    // res.redirect('/logout')
-    if (req.session.register) {
-      req.session.register = false
-      return res.render('index', {
-        page: './templates/login/form',
-        title: APP_TITLE,
-        menu: 'small',
-        message: null
-      })
-    }
-    res.render('index', {
-      page: './templates/login/form',
-      title: APP_TITLE,
-      menu: 'small',
-      message: 'Sua sessão expirou!'
-    })
-  })
-}
-
-function log(message) {
-  let data = new Date()
-  console.log('****************************************')
-  console.log(data.toLocaleString() + ' - ' + message)
-  // console.log('****************************************')
-}
-
-function problem(res, codeError) {
-  if (req.isAuthenticated()) {
     return res.render('index', {
-      page: './templates/structure/error',
-      title: APP_TITLE,
-      menu: 'full',
-      code_error: codeError
+        page: './templates/home',
+        title: process.env.APP_TITLE,
+        menu: 'small',
+        products: products
     })
-  }
-  res.render('index', {
-    page: './templates/structure/error',
-    title: APP_TITLE,
-    menu: 'small',
-    code_error: codeError
-  })
+}
+
+let loginAPIManager = async (req, res) => {
+    utils.log('login-APIManager...')
+    let result = await manager.send('post', '/login', { 'id': req.user._id, 'email': req.user.email })
+    if (result.auth) {
+        req.session.token = result.token
+        if (req.cookies.sessionId !== undefined) {
+            utils.log('get/cart/update/user...')
+            let carts = await manager.find('/cart/search/' + JSON.stringify({ values: { sessionId: req.cookies.sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }))
+            if (carts[0] !== null)
+                await manager.send('patch', '/cart/' + carts[0]._id, { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() })
+        }
+        res.redirect('/')
+    }
+}
+
+let logoutAPIManager = async (req, res) => {
+    utils.log('logout-APIManager...')
+    let result = await manager.find('/logout')
+    req.session.token = result.token
+    req.logout()
+    res.redirect('/')
+}
+
+let userManager = async (req, res) => {
+    utils.log('get/my-account...')
+    let user = await manager.find('/user?id=' + req.user._id + '&token=' + req.session.token)
+    return res.render('index', {
+        page: './templates/structure/my-account',
+        title: process.env.APP_TITLE,
+        menu: 'full',
+        user: user
+    })
+}
+
+let usersManager = async (req, res) => {
+    utils.log('get/users...')
+    let users = await manager.find('/users?token=' + req.session.token)
+    return res.render('index', {
+        page: './templates/users',
+        title: process.env.APP_TITLE,
+        menu: 'full',
+        users: users
+    })
+}
+
+let customerManager = async (req, res) => {
+    utils.log('get/customers...')
+    let customers = await manager.find('/customers?token=' + req.session.token)
+    return res.render('index', {
+        page: './templates/customers',
+        title: process.env.APP_TITLE,
+        menu: 'full',
+        customers: customers
+    })
 }
 
 module.exports = (passport) => {
 
-  /* INDEX */
-  router.get('/', (req, res, next) => {
-    log('index... ')
+    /* INDEX */
+    router.get('/', (req, res, next) => {
+        utils.log('index... ')
+        // console.log('Cookies: ', req.cookies)
+        productsHome(req, res)
+    })
 
-    // console.log('Cookies: ', req.cookies)
-
-    req.session.register = false
-    request.get(API_GATEWAY + '/products', (error, result) => {
-      if (error) { return console.log('get/index/error: ' + error) }
-      if (result.statusCode == 200) {
-
-        // let body = JSON.parse(result.body)
-        // let price = '150.000.000,99'       
-        // price = price.split('.').join('')
-        // price = price.replace(',', '.')
-        // console.log('PRICE1: ' + price)
-        // console.log('CALC-1: ' + (parseFloat(price) - ((parseFloat(price) / 100) * parseInt('50'))).toFixed(2).toLocaleString('pt-BR', {minimumFractionDigits: 2}) )
-        // console.log('DISC-1: ' + body[0].discount)
-        // console.log('CALC-2: ' + (parseFloat('299.90') - ((parseFloat('299.90') / 100) * parseInt('50'))) )
-        // console.log('CALC-3: ' + (parseFloat(body[0].price) - ((parseFloat(body[0].price) / 100) * parseInt(body[0].discount))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join(''))
-
-        if (req.isAuthenticated()) {
-          return res.render('index', {
-            page: './templates/home',
-            title: APP_TITLE,
-            menu: 'full',
-            docs: JSON.parse(result.body)
-          })
-        }
-        return res.render('index', {
-          page: './templates/home',
-          title: APP_TITLE,
-          menu: 'small',
-          docs: JSON.parse(result.body)
+    /* LOGIN */
+    router.get('/login', manager.isNotAuthenticated, (req, res, next) => {
+        utils.log('get/index... ')
+        res.render('index', {
+            page: './templates/login/form',
+            title: process.env.APP_TITLE,
+            menu: 'small',
+            message: req.flash('message')
         })
-      }
-      problem(res, result.statusCode)
     })
-  })
 
-  /* LOGIN */
-  router.get('/login', isNotAuthenticated, (req, res, next) => {
-    log('get/index... ')
-    req.session.register = false
-    res.render('index', {
-      page: './templates/login/form',
-      title: APP_TITLE,
-      menu: 'small',
-      message: req.flash('message')
-    })
-  })
-
-  /* LOGIN */
-  router.post('/login', passport.authenticate('login', {
-    // successRedirect: '/home',
-    failureRedirect: '/login',
-    failureFlash: true
-  }),
-    (req, res) => {
-      log('post/login...')
-      request.post(API_GATEWAY + '/login', {
-        json: {
-          'id': req.user._id,
-          'email': req.user.email
+    /* LOGIN */
+    router.post('/login', passport.authenticate('login', {
+        // successRedirect: '/home',
+        failureRedirect: '/login',
+        failureFlash: true
+    }),
+        (req, res) => {
+            loginAPIManager(req, res)
         }
-      }, (error, response, body) => {
-        if (error) { return console.log('get/login/error: ' + error) }
-        if (response.body.auth) {
-          req.session.token = response.body.token
+    )
 
-          console.log('BODY: ' + JSON.stringify(response.body))
+    /* CLEAR SESSION */
+    router.get('/clear-session', (req, res, next) => {
+        res.clearCookie('sessionId')
+        res.redirect('/')
+    })
 
-          if (req.cookies.sessionId !== undefined) {
-            let sessionId = req.cookies.sessionId
-            let findCart = { values: { sessionId: sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }
-            log('get/cart/search...')
-            request.get(API_GATEWAY + '/cart/search/' + JSON.stringify(findCart), (error, result) => {
-              if (error) { return console.log('get/cart/search/error: ' + error) }
-              if (result.statusCode == 200) {
-                let cart = JSON.parse(result.body)[0]
-                if (cart !== undefined && cart.products.length == 0)
-                  cart = null
-                if (cart != null && cart.isLogged == false && cart.isActive == true) {
-                  request.patch(API_GATEWAY + '/cart/' + cart._id, {
-                    json: {
-                      'isLogged': true,
-                      'customer': req.user._id,
-                      'changeDate': new Date().toLocaleString()
-                    }
-                  }, (error, response, body) => {
-                    if (error) { return console.log('patch/cart/error: ' + error) }
-                  })
-                }
-              }
+    /* LOGOUT */
+    router.get('/logout', manager.isAuthenticated, (req, res, next) => {
+        logoutAPIManager(req, res)
+    })
+
+    /* REGISTER */
+    router.get('/registro', manager.isNotAuthenticated, (req, res) => {
+        utils.log('get/register/form... ')
+        res.render('index', {
+            page: './templates/register/form',
+            title: process.env.APP_TITLE,
+            menu: 'small',
+            message: req.flash('message')
+        })
+    })
+
+    /* REGISTER-SUCCESS */
+    router.post('/signup', passport.authenticate('signup', {
+        // successRedirect: '/home',
+        failureRedirect: '/registro',
+        failureFlash: true
+    }),
+        (req, res) => {
+            utils.log('post/register/success...')
+            res.render('index', {
+                page: './templates/register/success',
+                title: process.env.APP_TITLE,
+                menu: 'small',
+                success: true,
+                user: req.user,
+                message: req.flash('message')
             })
-          }
-
-          console.log('COOKIES: ' + JSON.stringify(req.cookies))
-
-          res.redirect('/')
         }
-      })
-    }
-  )
+    )
 
-  router.get('/clear-session', (req, res, next) => {
-    res.clearCookie('sessionId')
-    res.redirect('/')
-  })
-
-  /* HOME */
-  // router.get('/home', (req, res, next) => {
-  //   log('get/home...')
-  //   request.get(API_GATEWAY + '/products', (error, result) => {
-  //     if (error) { return console.log('get/home/error: ' + error) }
-  //     if (result.statusCode == 200) {
-  //       if (req.isAuthenticated()) {
-  //         return res.render('index', {
-  //           page: './templates/home',
-  //           title: APP_TITLE,
-  //           menu: 'full',
-  //           docs: JSON.parse(result.body)
-  //         })
-  //       }
-  //       return res.render('index', {
-  //         page: './templates/home',
-  //         title: APP_TITLE,
-  //         menu: 'small',
-  //         docs: JSON.parse(result.body)
-  //       })
-  //     }
-  //     problem(res, result.statusCode)
-  //   })
-  // })
-
-  /* LOGOUT */
-  router.get('/logout', isAuthenticated, (req, res, next) => {
-    log('get/logout...')
-    request.get(API_GATEWAY + '/logout', (error, result) => {
-      if (error) { return console.log('get/logout/error: ' + error) }
-      req.session.token = JSON.parse(result.body).token
-      req.logout()
-      res.redirect('/')
-    })
-  })
-
-  /* REGISTER */
-  router.get('/registro', isNotAuthenticated, (req, res) => {
-    log('get/register... ')
-    res.render('index', {
-      page: './templates/register/form',
-      title: APP_TITLE,
-      menu: 'small',
-      message: req.flash('message')
-    });
-  });
-
-  /* REGISTER-SUCCESS */
-  router.post('/signup', passport.authenticate('signup', {
-    // successRedirect: '/home',
-    failureRedirect: '/registro',
-    failureFlash: true
-  }),
-    (req, res) => {
-      log('post/signup/success...')
-      req.session.register = true
-      res.render('index', {
-        page: './templates/register/success',
-        title: APP_TITLE,
-        menu: 'small',
-        success: true,
-        firstName: req.user.firstName,
-        email: req.user.email,
-        message: req.flash('message')
-      });
-    }
-  );
-
-  /* CONTATO */
-  router.get('/contato', (req, res, next) => {
-    log('get/contact...')
-    if (req.isAuthenticated()) {
-      return res.render('index', {
-        page: './templates/structure/contact',
-        title: APP_TITLE,
-        menu: 'full',
-        name: req.session.user
-      })
-    }
-    res.render('index', {
-      page: './templates/structure/contact',
-      title: APP_TITLE,
-      menu: 'small',
-      name: req.session.user
-    })
-  })
-
-  /* MY-ACCOUNT */
-  router.get('/minha-conta', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('get/my-account...')
-    request.get(API_GATEWAY + '/user?id=' + req.user._id + '&token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('get/my-account/error: ' + error) }
-
-      // console.log('RESULT: ' + result.body)
-
-      if (result.statusCode == 200) {
-        return res.render('index', {
-          page: './templates/structure/my-account',
-          title: APP_TITLE,
-          menu: 'full',
-          name: req.user.firstName + ' ' + req.user.lastName,
-          doc: JSON.parse(result.body)
+    /* CONTATO */
+    router.get('/contato', (req, res, next) => {
+        utils.log('get/contact...')
+        if (req.isAuthenticated()) {
+            return res.render('index', {
+                page: './templates/structure/contact',
+                title: process.env.APP_TITLE,
+                menu: 'full',
+                name: req.session.user
+            })
+        }
+        res.render('index', {
+            page: './templates/structure/contact',
+            title: process.env.APP_TITLE,
+            menu: 'small',
+            name: req.session.user
         })
-      }
-      problem(res, result.statusCode)
     })
-  })
 
-  /* USERS */
-  router.get('/usuarios', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('get/users...')
-    request.get(API_GATEWAY + '/users?token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('get/users/error: ' + error) }
-
-      // console.log('RESULT: ' + result.body)
-
-      if (result.statusCode == 200) {
-        return res.render('index', {
-          page: './templates/users',
-          title: APP_TITLE,
-          menu: 'full',
-          docs: JSON.parse(result.body)
-        })
-      }
-      problem(res, result.statusCode)
+    /* MY-ACCOUNT */
+    router.get('/minha-conta', manager.isAuthenticated, manager.isTokenValid, (req, res, next) => {
+        userManager(req, res)
     })
-  })
 
-  /* CUSTOMERS */
-  router.get('/clientes', isAuthenticated, isTokenValid, (req, res, next) => {
-    log('get/customers...')
-    request.get(API_GATEWAY + '/customers?token=' + req.session.token, (error, result) => {
-      if (error) { return console.log('get/customers/error: ' + error) }
-
-      // console.log('RESULT: ' + result.body)
-
-      if (result.statusCode == 200) {
-        return res.render('index', {
-          page: './templates/customers',
-          title: APP_TITLE,
-          menu: 'full',
-          docs: JSON.parse(result.body)
-        })
-      }
-      problem(res, result.statusCode)
+    /* USERS */
+    router.get('/usuarios', manager.isAuthenticated, manager.isTokenValid, (req, res, next) => {
+        usersManager(req, res)
     })
-  })
 
-  // router.get('/frete', (req, res, next) => {
-  //   log('get/frete...')
-  //   var url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl';
-  //   soap.createClient(url, function (error, client) {
+    /* CUSTOMERS */
+    router.get('/clientes', manager.isAuthenticated, manager.isTokenValid, (req, res, next) => {
+        customerManager(req, res)
+    })
 
-  //     client.CalcPrecoPrazo(
-  //       {
-  //         nCdEmpresa: '',
-  //         sDsSenha: '',
-  //         // nCdServico: '04014', // SEDEX
-  //         nCdServico: '04510', // PAC
-  //         sCepOrigem: '93950000',
-  //         sCepDestino: '96690000',
-  //         nVlPeso: '1',
-  //         nCdFormato: 3,
-  //         nVlComprimento: '0',
-  //         nVlAltura: '0',
-  //         nVlLargura: '0',
-  //         nVlDiametro: '0',
-  //         sCdMaoPropria: 'N',
-  //         nVlValorDeclarado: '0',
-  //         sCdAvisoRecebimento:'N'
-  //       }, function(error, result) {
-  //         if (error) { return console.log('get/frete/error: ' + error) }
-  //         console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
-  //       }
-  //     )
-
-  //     // if (error) { return console.log('get/frete/error: ' + error) }
-  //     // console.log(client)
-
-  //   })
-  //   res.redirect('/')
-  // })
-
-  return router
+    return router
 }
