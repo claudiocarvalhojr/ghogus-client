@@ -4,7 +4,7 @@ const express = require('express')
 const router = express.Router()
 
 let productsHome = async (req, res) => {
-    utils.log('index... ')
+    utils.log('productsHome()... ')
     let products = await manager.find('/products')
     if (req.isAuthenticated()) {
         return res.render('index', {
@@ -22,23 +22,73 @@ let productsHome = async (req, res) => {
     })
 }
 
+let mergeCart = async (req, res) => {
+
+}
+
 let loginAPIManager = async (req, res) => {
-    utils.log('login-APIManager...')
+    utils.log('loginAPIManager()...')
     let result = await manager.send('post', '/login', { 'id': req.user._id, 'email': req.user.email })
     if (result.auth) {
         req.session.token = result.token
-        if (req.cookies.sessionId !== undefined) {
-            utils.log('get/cart/update/user...')
-            let carts = await manager.find('/cart/search/' + JSON.stringify({ values: { sessionId: req.cookies.sessionId }, fields: 'sessionId', ordination: 1, limit: 1 }))
-            if (carts[0] !== null)
-                await manager.send('patch', '/cart/' + carts[0]._id, { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() })
+        if (req.cookies.sessionId !== undefined) {            
+            let cartSession = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+            if (cartSession[0] !== undefined && cartSession[0] !== null && cartSession[0].isEnabled) {
+                let cartUser = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
+                if (cartUser[0] !== undefined && cartUser[0] !== null && cartUser[0].isEnabled) {
+                    let addItem = false
+                    let updateQty = false
+                    cartUser[0].products.forEach(function (product1) {
+                        cartSession[0].products.forEach(function (product2) {
+                            if (product2.sku.localeCompare(product1.sku) == 0) {
+                                updateQty = true
+                                if ((product2.qty + product1.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
+                                    product1.qty += product2.qty
+                                } else {
+                                    product1.qty = process.env.LIMIT_QTY_ITEM_CART
+                                }
+                            } else {
+                                addItem = true
+                                cartUser[0].products.push(product2)
+                            }
+                        })
+                    })
+                    if (updateQty) {
+                        utils.log('patch/cart-user/merge/products/qtys...')
+                        let updateCartItemsQty = {
+                            'products': cartUser[0].products,
+                            'changeDate': new Date().toLocaleString()
+                        }
+                        await manager.send('patch', '/cart/set/' + cartUser[0]._id, updateCartItemsQty)
+                    }
+                    if (addItem) {
+                        utils.log('patch/cart-user/merge/products...')
+                        let addCartItems = {
+                            'products': cartUser[0].products,
+                            'changeDate': new Date().toLocaleString()
+                        }
+                        await manager.send('patch', '/cart/push/' + cartUser[0]._id, addCartItems)
+                    }
+                    if (updateQty || addItem) {
+                        utils.log('patch/cart-session/disable...')
+                        let isEnabled = { 'isEnabled': false }
+                        await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
+                    }
+                }
+                else if (cartUser[0] === undefined || cartUser[0] === null) {
+                    utils.log('patch/cart-session/update/user...')
+                    let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
+                    await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
+                }
+            }
+            return res.redirect('/cart')
         }
         res.redirect('/')
     }
 }
 
 let logoutAPIManager = async (req, res) => {
-    utils.log('logout-APIManager...')
+    utils.log('logoutAPIManager()...')
     let result = await manager.find('/logout')
     req.session.token = result.token
     req.logout()
@@ -46,7 +96,7 @@ let logoutAPIManager = async (req, res) => {
 }
 
 let userManager = async (req, res) => {
-    utils.log('get/my-account...')
+    utils.log('userManager()...')
     let user = await manager.find('/user?id=' + req.user._id + '&token=' + req.session.token)
     return res.render('index', {
         page: './templates/structure/my-account',
@@ -57,7 +107,7 @@ let userManager = async (req, res) => {
 }
 
 let usersManager = async (req, res) => {
-    utils.log('get/users...')
+    utils.log('usersManager()...')
     let users = await manager.find('/users?token=' + req.session.token)
     return res.render('index', {
         page: './templates/users',
@@ -68,7 +118,7 @@ let usersManager = async (req, res) => {
 }
 
 let customerManager = async (req, res) => {
-    utils.log('get/customers...')
+    utils.log('customerManager()...')
     let customers = await manager.find('/customers?token=' + req.session.token)
     return res.render('index', {
         page: './templates/customers',
@@ -82,14 +132,13 @@ module.exports = (passport) => {
 
     /* INDEX */
     router.get('/', (req, res, next) => {
-        utils.log('index... ')
         // console.log('Cookies: ', req.cookies)
         productsHome(req, res)
     })
 
     /* LOGIN */
     router.get('/login', manager.isNotAuthenticated, (req, res, next) => {
-        utils.log('get/index... ')
+        utils.log('get/login/form... ')
         res.render('index', {
             page: './templates/login/form',
             title: process.env.APP_TITLE,
@@ -111,12 +160,14 @@ module.exports = (passport) => {
 
     /* CLEAR SESSION */
     router.get('/clear-session', (req, res, next) => {
+        utils.log('get/clear-session...')
         res.clearCookie('sessionId')
         res.redirect('/')
     })
 
     /* LOGOUT */
     router.get('/logout', manager.isAuthenticated, (req, res, next) => {
+        utils.log('get/logout...')
         logoutAPIManager(req, res)
     })
 

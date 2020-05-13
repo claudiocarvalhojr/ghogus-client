@@ -1,20 +1,23 @@
 const fetch = require('node-fetch')
-var utils = require('./utils');
+const utils = require('./utils');
 const API_GATEWAY = process.env.API_GATEWAY
 
 let isAuthenticated = (req, res, next) => {
+    utils.log('isAuthenticated()...')
     if (req.isAuthenticated())
         return next()
     res.redirect('/')
 }
 
 var isNotAuthenticated = (req, res, next) => {
+    utils.log('isNotAuthenticated()...')
     if (!req.isAuthenticated())
       return next()
     res.redirect('/')
   }
 
 let isTokenValid = async (req, res, next) => {
+    utils.log('isTokenValid()...')
     let result = await find('/check?token=' + req.session.token)
     if (result.auth) {
         return next()
@@ -41,6 +44,7 @@ let isTokenValid = async (req, res, next) => {
 }
 
 function problem(res, codeError) {
+    utils.log('problem()...')
     if (req.isAuthenticated()) {
         return res.render('index', {
             page: './templates/structure/error',
@@ -57,18 +61,19 @@ function problem(res, codeError) {
     })
 }
 
-let check = (res) => {
+let checkStatus = (res) => {
+    utils.log('checkStatus(' + res.status + ')...')
     // console.log('CODE: ' + res.status + ', TEXT: ' + res.statusText)
     if (res.ok)
         return res
 }
 
 let find = async (url) => {
-    utils.log('get/find(url)...')
+    utils.log('find(' + url + ')...')
     return new Promise(resolve => {
         resolve(
             fetch(API_GATEWAY + url)
-                .then(check)
+                .then(checkStatus)
                 .then(res => res.json())
                 // .then(json => console.log('RESULT: ' + json))
                 .catch(err => console.error('ERROR: ' + err))
@@ -77,7 +82,7 @@ let find = async (url) => {
 }
 
 let send = async (method, url, params) => {
-    utils.log(method + '/cart...')
+    utils.log('send(' + method + ')...')
     return new Promise(resolve => {
         resolve(
             fetch(API_GATEWAY + url, {
@@ -85,7 +90,7 @@ let send = async (method, url, params) => {
                 body: JSON.stringify(params),
                 headers: { 'Content-Type': 'application/json' }
             })
-                .then(check)
+                .then(checkStatus)
                 .then(res => res.json())
                 // .then(json => console.log('RESULT: ' + json))
                 .catch(err => console.error('ERROR: ' + err))

@@ -4,7 +4,7 @@ const express = require('express')
 const router = express.Router()
 
 let renderProduct = (req, res, product) => {
-    utils.log('renderProduct...')
+    utils.log('renderProduct(' + product.sku + ')...')
     if (req.isAuthenticated()) {
         return res.render('index', {
             page: './templates/product',
@@ -17,11 +17,12 @@ let renderProduct = (req, res, product) => {
         page: './templates/product',
         title: process.env.APP_TITLE,
         menu: 'small',
-        product: req.product
+        product: product
     })
 }
 
 let productManager = async (req, res, action) => {
+    utils.log('productManager(' + action + ')...')
     if (action === 'form') {
         utils.log('get/product/form...')
         let date = new Date()
