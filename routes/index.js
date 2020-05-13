@@ -38,18 +38,29 @@ let loginAPIManager = async (req, res) => {
                 if (cartUser[0] !== undefined && cartUser[0] !== null && cartUser[0].isEnabled) {
                     let addItem = false
                     let updateQty = false
-                    cartUser[0].products.forEach(function (product1) {
-                        cartSession[0].products.forEach(function (product2) {
-                            if (product2.sku.localeCompare(product1.sku) == 0) {
+                    cartUser[0].products.forEach(function (prodUser) {
+                        cartSession[0].products.forEach(function (prodSession) {
+                            if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
+                                console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
                                 updateQty = true
-                                if ((product2.qty + product1.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
-                                    product1.qty += product2.qty
+                                if ((prodSession.qty + prodUser.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
+                                    prodUser.qty += prodSession.qty
                                 } else {
-                                    product1.qty = process.env.LIMIT_QTY_ITEM_CART
+                                    prodUser.qty = process.env.LIMIT_QTY_ITEM_CART
                                 }
                             } else {
-                                addItem = true
-                                cartUser[0].products.push(product2)
+                                console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                                // addItem = true
+                                // cartUser[0].products.push(prodSession)
+                                cartUser[0].products.forEach(function (prodAux) {
+                                    if (prodSession.sku.localeCompare(prodAux.sku) == 0)
+                                        isExists = true
+                                })
+                                if (!isExists) {
+                                    addItem = true
+                                    cartUser[0].products.push(prodSession)
+                                    isExists = false
+                                }
                             }
                         })
                     })

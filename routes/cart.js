@@ -106,20 +106,21 @@ let cartManager = async (req, res, next) => {
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
 
-    console.log('cart: ' + cart)
+    if (cart !== undefined && cart !== null)
+        console.log('cart: ' + cart[0])
+    else
+        console.log('cart: ' + cart)
 
-    if (req.cookies.sessionId === undefined && cart === undefined || cart === null) {
-        utils.log('there is no sessionId!')
+    console.log('logged: ' + req.isAuthenticated())
+
+    // novo cart e usuário não logado
+    if (!req.isAuthenticated() && cart === null && req.cookies.sessionId === undefined && addCartItem) {
+        utils.log('new cart and there is no sessionId!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let sessionId = await manager.find('/session-id')
         // res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 60) * 24) * 7) })
-        res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 20) * 1) * 1) * 1) })
-        let user = req.user
-        if (user !== undefined)
-            user = { '_id': user._id }
-        else
-            user = null
+        res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 1) * 1) * 1) })
         let newCart = {
             'sessionId': sessionId.token,
             'isEnabled': true,
@@ -130,7 +131,7 @@ let cartManager = async (req, res, next) => {
                 'value': '0,0',
                 'deliveryTime': 0
             },
-            'customer': user,
+            'customer': null,
             'products': [{
                 '_id': mongoose.Types.ObjectId(product._id),
                 'sku': product.sku,
@@ -151,7 +152,47 @@ let cartManager = async (req, res, next) => {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': sessionId.token, 'isEnabled': true } }))
         renderCart(req, res, cart[0])
     }
-    else if (cart !== undefined && cart !== null && cart[0].products.length == 0 && addCartItem) {
+
+    // novo cart e usuário logado
+    else if (req.isAuthenticated() && addCartItem && (cart === undefined || cart === null)) {
+        utils.log('new cart and user logged!')
+        let product = await manager.find('/product/sku/' + sku)
+        let registrationDate = new Date()
+        let newCart = {
+            'sessionId': null,
+            'isEnabled': true,
+            'isGift': false,
+            'voucher': null,
+            'freight': {
+                'postalCode': null,
+                'value': '0,0',
+                'deliveryTime': 0
+            },
+            'customer': { '_id': req.user._id },
+            'products': [{
+                '_id': mongoose.Types.ObjectId(product._id),
+                'sku': product.sku,
+                'title': product.title,
+                'price': product.price,
+                'discount': product.discount,
+                'online': product.online,
+                'saleable': product.saleable,
+                'qty': 1,
+                'images': [{
+                    'name': product.images[0].name
+                }]
+            }],
+            'registrationDate': registrationDate.toLocaleString(),
+            'changeDate': registrationDate.toLocaleString()
+        }
+        await manager.send('post', '/cart', newCart)
+        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
+        renderCart(req, res, cart[0])
+    }
+
+    // já existe cart, mas está vazio (indifere se usuário logado ou não)
+    else if (req.isAuthenticated() && addCartItem && cart !== undefined && cart !== null && cart[0].products.length == 0) {
+        utils.log('cart exists, but it is empty and user logged!')
         let newItem = {
             '_id': mongoose.Types.ObjectId(product._id),
             'sku': product.sku,
@@ -173,11 +214,13 @@ let cartManager = async (req, res, next) => {
         await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
         renderCart(req, res, cart)
     }
-    else if (req.cookies.sessionId !== undefined || (cart[0] !== undefined && cart[0] !== null && cart[0].products.length > 0)) {
-        utils.log('sessionId already exists!')
+
+    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined && (cart === undefined || cart === null)) {
+
+        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+
+        utils.log('sessionId already exists and it is not empty!')
         if (addCartItem == true || updateCartItemQty == true || removeCartItem == true) {
-            if (cart === undefined || cart === null)
-                cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
             let isExists = false
             let count = 0
             let position = 0
@@ -190,6 +233,7 @@ let cartManager = async (req, res, next) => {
                 }
                 count++
             }
+
             // item não existe, então add novo item ao cart
             if (!isExists && addCartItem) {
                 utils.log('patch/cart/add/product...')
@@ -215,6 +259,7 @@ let cartManager = async (req, res, next) => {
                 await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
                 renderCart(req, res, cart[0])
             }
+
             // item existe, e está sendo add novamente ou a opção de qty foi alterada no cart, então atualiza a quantidade respeitando o limite máximo
             else if (isExists && (addCartItem && cart[0].products[position].qty < process.env.LIMIT_QTY_ITEM_CART || updateCartItemQty && qtyItemCart <= process.env.LIMIT_QTY_ITEM_CART)) {
                 utils.log('patch/cart/update/product...')
@@ -229,6 +274,7 @@ let cartManager = async (req, res, next) => {
                 await manager.send('patch', '/cart/set/' + cart[0]._id + '_' + cart[0].products[position]._id, updCartItemQty)
                 renderCart(req, res, cart[0])
             }
+
             // item existe e será removido
             else if (isExists && removeCartItem) {
                 utils.log('patch/cart/remove/product...')
@@ -237,11 +283,13 @@ let cartManager = async (req, res, next) => {
                 cart[0].products.splice(position, 1)
                 renderCart(req, res, cart[0])
             }
+
             // item existe, mas já atingiu o limite máximo para o item
             else if (isExists && addCartItem && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
                 utils.log('patch/cart/update/product/qtyMax...')
                 renderCart(req, res, cart[0])
             }
+
             // analisar um pouco mais quais as possibilidades que levam a ocorrer este problema (chegar até aqui)
             else {
                 utils.log('Houve algum problema! (avaliar)')
@@ -280,6 +328,11 @@ let cartManager = async (req, res, next) => {
             renderCart(req, res, null)
         }
     }
+
+    else if (req.isAuthenticated() && cart !== undefined && cart !== null && cart[0].products.length > 0) {
+        console.log('aqui ainda falta fazer...')
+    }
+
 }
 
 let freightCalculation = async (postalCode) => {
