@@ -115,7 +115,7 @@ let cartManager = async (req, res, next) => {
 
     // novo cart e usuário não logado
     if (!req.isAuthenticated() && cart === null && req.cookies.sessionId === undefined && addCartItem) {
-        utils.log('new cart and there is no sessionId!')
+        utils.log('Sessão não existe e usuário não está logado, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let sessionId = await manager.find('/session-id')
@@ -155,7 +155,7 @@ let cartManager = async (req, res, next) => {
 
     // novo cart e usuário logado
     else if (req.isAuthenticated() && addCartItem && (cart === undefined || cart === null)) {
-        utils.log('new cart and user logged!')
+        utils.log('Usuário está logado e sem cart, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let newCart = {
@@ -192,7 +192,7 @@ let cartManager = async (req, res, next) => {
 
     // já existe cart, mas está vazio (indifere se usuário logado ou não)
     else if (req.isAuthenticated() && addCartItem && cart !== undefined && cart !== null && cart[0].products.length == 0) {
-        utils.log('cart exists, but it is empty and user logged!')
+        utils.log('Usuário está logado e já existe cart, mas está vazio!')
         let newItem = {
             '_id': mongoose.Types.ObjectId(product._id),
             'sku': product.sku,
@@ -212,15 +212,22 @@ let cartManager = async (req, res, next) => {
             'changeDate': new Date().toLocaleString()
         }
         await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
-        renderCart(req, res, cart)
+        renderCart(req, res, cart[0])
     }
 
-    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined && (cart === undefined || cart === null)) {
+    else if ((req.isAuthenticated() && cart !== undefined && cart !== null && cart[0].products.length > 0) || (req.cookies.sessionId !== undefined && (cart === undefined || cart === null))) {
 
-        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+        utils.log('Sessão já existe ou usuário não está logado e cart não está vazio!')
 
-        utils.log('sessionId already exists and it is not empty!')
+        if (!req.isAuthenticated() && (cart === undefined || cart === null)) {
+            utils.log('Sessão já existe, usuário não está logado e cart não está vazio!')
+            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+        } else {
+            utils.log('Usuário está logado e cart não está vazio!')
+        }
+
         if (addCartItem == true || updateCartItemQty == true || removeCartItem == true) {
+            utils.log('Verificando se item já existe no cart...')
             let isExists = false
             let count = 0
             let position = 0
@@ -275,18 +282,18 @@ let cartManager = async (req, res, next) => {
                 renderCart(req, res, cart[0])
             }
 
+            // item existe, mas já atingiu o limite máximo para o item
+            else if (isExists && addCartItem && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
+                utils.log('patch/cart/update/product/qtyMax...')
+                renderCart(req, res, cart[0])
+            }
+
             // item existe e será removido
             else if (isExists && removeCartItem) {
                 utils.log('patch/cart/remove/product...')
                 let remCartItem = { 'products': { '_id': cart[0].products[position]._id } }
                 await manager.send('patch', '/cart/pull/' + cart[0]._id, remCartItem)
                 cart[0].products.splice(position, 1)
-                renderCart(req, res, cart[0])
-            }
-
-            // item existe, mas já atingiu o limite máximo para o item
-            else if (isExists && addCartItem && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
-                utils.log('patch/cart/update/product/qtyMax...')
                 renderCart(req, res, cart[0])
             }
 
@@ -318,7 +325,7 @@ let cartManager = async (req, res, next) => {
                 renderCart(req, res, cart)
             }
         } else {
-            utils.log('O sessionId expirou e as ações são inválidas (add, update, remove or freight)')
+            utils.log('Investigar, a partir deste ponto as ações são inválidas (add, update, remove or freight)')
             console.log('sessionId: ', req.cookies.sessionId)
             console.log('addCartItem: ', addCartItem)
             console.log('updateCartItemQty: ', updateCartItemQty)
@@ -328,11 +335,6 @@ let cartManager = async (req, res, next) => {
             renderCart(req, res, null)
         }
     }
-
-    else if (req.isAuthenticated() && cart !== undefined && cart !== null && cart[0].products.length > 0) {
-        console.log('aqui ainda falta fazer...')
-    }
-
 }
 
 let freightCalculation = async (postalCode) => {
