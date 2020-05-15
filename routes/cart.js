@@ -93,34 +93,24 @@ let cartManager = async (req, res, next) => {
         postalCode = req.body.postalCode
     }
 
-    // console.log('sessionId: ', req.cookies.sessionId)
-    // console.log('add: ', addCartItem)
-    // console.log('update: ', updateCartItemQty)
-    // console.log('remove: ', removeCartItem)
-    // console.log('freight: ', freightCart)
-    // console.log('postalCode: ', postalCode)
-    // console.log('sku: ', sku)
-    // console.log('cartId: ', cartId)
+    let cart = undefined
 
-    let cart = null
-    if (req.isAuthenticated())
+    if (req.isAuthenticated()) {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-
-    if (cart !== undefined && cart !== null)
-        console.log('cart: ' + cart[0])
-    else
-        console.log('cart: ' + cart)
-
-    console.log('logged: ' + req.isAuthenticated())
+        console.log('1) cart (logged): ' + cart[0])
+    }
+    else {
+        console.log('2) cart (session): ' + cart)
+    }
 
     // novo cart e usuário não logado
-    if (!req.isAuthenticated() && cart === null && req.cookies.sessionId === undefined && addCartItem) {
+    if (!req.isAuthenticated() && req.cookies.sessionId === undefined && cart === undefined && addCartItem) {
         utils.log('Sessão não existe e usuário não está logado, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let sessionId = await manager.find('/session-id')
         // res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 60) * 24) * 7) })
-        res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 1) * 1) * 1) })
+        res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 20) * 1) * 1) * 1) })
         let newCart = {
             'sessionId': sessionId.token,
             'isEnabled': true,
@@ -154,7 +144,7 @@ let cartManager = async (req, res, next) => {
     }
 
     // novo cart e usuário logado
-    else if (req.isAuthenticated() && addCartItem && (cart === undefined || cart === null)) {
+    else if (req.isAuthenticated() && cart[0] === undefined && addCartItem) {
         utils.log('Usuário está logado e sem cart, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
@@ -191,128 +181,132 @@ let cartManager = async (req, res, next) => {
     }
 
     // já existe cart, mas está vazio (indifere se usuário logado ou não)
-    else if (req.isAuthenticated() && addCartItem && cart !== undefined && cart !== null && cart[0].products.length == 0) {
-        utils.log('Usuário está logado e já existe cart, mas está vazio!')
-        let newItem = {
-            '_id': mongoose.Types.ObjectId(product._id),
-            'sku': product.sku,
-            'title': product.title,
-            'price': product.price,
-            'discount': product.discount,
-            'online': product.online,
-            'saleable': product.saleable,
-            'qty': 1,
-            'images': [{
-                'name': product.images[0].name
-            }]
-        }
-        cart[0].products.push(newItem)
-        let newCartItem = {
-            'products': cart[0].products,
-            'changeDate': new Date().toLocaleString()
-        }
-        await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
-        renderCart(req, res, cart[0])
-    }
+    // else if (req.isAuthenticated() && cart[0] !== undefined && cart[0] !== null && cart[0].products.length == 0 && addCartItem) {
+    //     utils.log('Usuário está logado e já existe cart, mas está vazio!')
+    //     let newItem = {
+    //         '_id': mongoose.Types.ObjectId(product._id),
+    //         'sku': product.sku,
+    //         'title': product.title,
+    //         'price': product.price,
+    //         'discount': product.discount,
+    //         'online': product.online,
+    //         'saleable': product.saleable,
+    //         'qty': 1,
+    //         'images': [{
+    //             'name': product.images[0].name
+    //         }]
+    //     }
+    //     cart[0].products.push(newItem)
+    //     let newCartItem = {
+    //         'products': cart[0].products,
+    //         'changeDate': new Date().toLocaleString()
+    //     }
+    //     await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
+    //     renderCart(req, res, cart[0])
+    // }
 
-    else if ((req.isAuthenticated() && cart !== undefined && cart !== null && cart[0].products.length > 0) || (req.cookies.sessionId !== undefined && (cart === undefined || cart === null))) {
+    else if ((req.isAuthenticated() && cart[0] !== undefined) || (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart === undefined)) {
 
         utils.log('Sessão já existe ou usuário não está logado e cart não está vazio!')
 
-        if (!req.isAuthenticated() && (cart === undefined || cart === null)) {
-            utils.log('Sessão já existe, usuário não está logado e cart não está vazio!')
-            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-        } else {
-            utils.log('Usuário está logado e cart não está vazio!')
-        }
+        if (addCartItem || updateCartItemQty || removeCartItem) {
 
-        if (addCartItem == true || updateCartItemQty == true || removeCartItem == true) {
-            utils.log('Verificando se item já existe no cart...')
-            let isExists = false
-            let count = 0
-            let position = 0
-            let compare = null
-            while (count < cart[0].products.length) {
-                compare = cart[0].products[count].sku.localeCompare(sku)
-                if (compare == 0 && !isExists) {
-                    isExists = true
-                    position = count
+            if (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart === undefined) {
+                utils.log('Sessão já existe, usuário não está logado e cart não está vazio!')
+                cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+            } else {
+                utils.log('Usuário está logado e cart não está vazio!')
+            }
+
+            if (cart[0] !== undefined) {
+
+                utils.log('Verificando se item já existe no cart...')
+                let isExists = false
+                let count = 0
+                let position = 0
+                let compare = null
+                while (count < cart[0].products.length) {
+                    compare = cart[0].products[count].sku.localeCompare(sku)
+                    if (compare == 0 && !isExists) {
+                        isExists = true
+                        position = count
+                    }
+                    count++
                 }
-                count++
-            }
 
-            // item não existe, então add novo item ao cart
-            if (!isExists && addCartItem) {
-                utils.log('patch/cart/add/product...')
-                let product = await manager.find('/product/SKU/' + sku)
-                let newItem = {
-                    '_id': mongoose.Types.ObjectId(product._id),
-                    'sku': product.sku,
-                    'title': product.title,
-                    'price': product.price,
-                    'discount': product.discount,
-                    'online': product.online,
-                    'saleable': product.saleable,
-                    'qty': 1,
-                    'images': [{
-                        'name': product.images[0].name
-                    }]
+                // item não existe, então add novo item ao cart
+                if (!isExists && addCartItem) {
+                    utils.log('patch/cart/add/product...')
+                    let product = await manager.find('/product/SKU/' + sku)
+                    let newItem = {
+                        '_id': mongoose.Types.ObjectId(product._id),
+                        'sku': product.sku,
+                        'title': product.title,
+                        'price': product.price,
+                        'discount': product.discount,
+                        'online': product.online,
+                        'saleable': product.saleable,
+                        'qty': 1,
+                        'images': [{
+                            'name': product.images[0].name
+                        }]
+                    }
+                    cart[0].products.push(newItem)
+                    let newCartItem = {
+                        'products': cart[0].products,
+                        'changeDate': new Date().toLocaleString()
+                    }
+                    await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
+                    renderCart(req, res, cart[0])
                 }
-                cart[0].products.push(newItem)
-                let newCartItem = {
-                    'products': cart[0].products,
-                    'changeDate': new Date().toLocaleString()
+
+                // item existe, e está sendo add novamente ou a opção de qty foi alterada no cart, então atualiza a quantidade respeitando o limite máximo
+                else if (isExists && (addCartItem && cart[0].products[position].qty < process.env.LIMIT_QTY_ITEM_CART || updateCartItemQty && qtyItemCart <= process.env.LIMIT_QTY_ITEM_CART)) {
+                    utils.log('patch/cart/update/product...')
+                    if (addCartItem)
+                        cart[0].products[position].qty++
+                    else if (updateCartItemQty)
+                        cart[0].products[position].qty = qtyItemCart
+                    let updCartItemQty = {
+                        'products.$.qty': cart[0].products[position].qty,
+                        'changeDate': new Date().toLocaleString()
+                    }
+                    await manager.send('patch', '/cart/set/' + cart[0]._id + '_' + cart[0].products[position]._id, updCartItemQty)
+                    renderCart(req, res, cart[0])
                 }
-                await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
-                renderCart(req, res, cart[0])
-            }
 
-            // item existe, e está sendo add novamente ou a opção de qty foi alterada no cart, então atualiza a quantidade respeitando o limite máximo
-            else if (isExists && (addCartItem && cart[0].products[position].qty < process.env.LIMIT_QTY_ITEM_CART || updateCartItemQty && qtyItemCart <= process.env.LIMIT_QTY_ITEM_CART)) {
-                utils.log('patch/cart/update/product...')
-                if (addCartItem)
-                    cart[0].products[position].qty++
-                else if (updateCartItemQty)
-                    cart[0].products[position].qty = qtyItemCart
-                let updCartItemQty = {
-                    'products.$.qty': cart[0].products[position].qty,
-                    'changeDate': new Date().toLocaleString()
+                // item existe, mas já atingiu o limite máximo para o item
+                else if (isExists && addCartItem && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
+                    utils.log('patch/cart/update/product/qtyMax...')
+                    renderCart(req, res, cart[0])
                 }
-                await manager.send('patch', '/cart/set/' + cart[0]._id + '_' + cart[0].products[position]._id, updCartItemQty)
-                renderCart(req, res, cart[0])
-            }
 
-            // item existe, mas já atingiu o limite máximo para o item
-            else if (isExists && addCartItem && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
-                utils.log('patch/cart/update/product/qtyMax...')
-                renderCart(req, res, cart[0])
-            }
+                // item existe e será removido
+                else if (isExists && removeCartItem) {
+                    utils.log('patch/cart/remove/product...')
+                    let remCartItem = { 'products': { '_id': cart[0].products[position]._id } }
+                    await manager.send('patch', '/cart/pull/' + cart[0]._id, remCartItem)
+                    cart[0].products.splice(position, 1)
+                    renderCart(req, res, cart[0])
+                }
 
-            // item existe e será removido
-            else if (isExists && removeCartItem) {
-                utils.log('patch/cart/remove/product...')
-                let remCartItem = { 'products': { '_id': cart[0].products[position]._id } }
-                await manager.send('patch', '/cart/pull/' + cart[0]._id, remCartItem)
-                cart[0].products.splice(position, 1)
-                renderCart(req, res, cart[0])
-            }
-
-            // analisar um pouco mais quais as possibilidades que levam a ocorrer este problema (chegar até aqui)
-            else {
-                utils.log('Houve algum problema! (avaliar)')
-                utils.log('Existe o sessionId, cart está vazio e as ações são inválidas (add, update, remove or freight) ')
-                console.log('isExists: ', isExists)
-                console.log('sessionId: ', req.cookies.sessionId)
-                console.log('addCartItem: ', addCartItem)
-                console.log('updateCartItemQty: ', updateCartItemQty)
-                console.log('freightCart: ', freightCart)
-                console.log('sku: ', sku)
-                console.log('cartId: ', cartId)
-                renderCart(req, res, null)
+                // analisar um pouco mais quais as possibilidades que levam a ocorrer este problema (chegar até aqui)
+                else {
+                    utils.log('Houve algum problema! (avaliar)')
+                    utils.log('Existe o sessionId, cart está vazio e as ações são inválidas (add, update, remove or freight) ')
+                    console.log('isExists: ', isExists)
+                    console.log('sessionId: ', req.cookies.sessionId)
+                    console.log('addCartItem: ', addCartItem)
+                    console.log('updateCartItemQty: ', updateCartItemQty)
+                    console.log('freightCart: ', freightCart)
+                    console.log('sku: ', sku)
+                    console.log('cartId: ', cartId)
+                    renderCart(req, res, null)
+                }
             }
         }
         // calcula o frete caso o cep não tenha sido informado (nova cart) ou cep diferente do informado anteriormente (cart já existente)
-        else if (freightCart) {
+        else if (cartId != null && freightCart) {
             utils.log('cart/freight-calculation...')
             let cart = await manager.find('/cart/' + cartId)
             if (cart.freight.postalCode == null || cart.freight.postalCode.localeCompare(postalCode) != 0) {
