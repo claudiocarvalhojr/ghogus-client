@@ -109,12 +109,14 @@ let loginAPIManager = async (req, res) => {
                         utils.log('patch/cart-session/disable...')
                         let isEnabled = { 'isEnabled': false }
                         await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
+                        res.clearCookie('sessionId')
                     }
                 }
                 else if (cartUser[0] === undefined || cartUser[0] === null) {
                     utils.log('patch/cart-session/update/user...')
                     let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
                     await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
+                    res.clearCookie('sessionId')
                 }
             }
             return res.redirect('/cart')

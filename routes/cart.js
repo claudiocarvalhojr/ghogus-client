@@ -93,19 +93,35 @@ let cartManager = async (req, res, next) => {
         postalCode = req.body.postalCode
     }
 
-    let cart = undefined
+    let cart = null
+    let newCart = false
+    let editCart = false
 
     if (req.isAuthenticated()) {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-        console.log('1) cart (logged): ' + cart[0])
+        console.log('1) cart (logged): ' + cart[0] + ' / ' + cart)
+    }
+    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined) {
+        console.log()
+        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+        console.log('2) cart (session): ' + cart[0] + ' / ' + cart)
     }
     else {
-        console.log('2) cart (session): ' + cart)
+        cart = undefined
+        console.log('3) cart (fake): ' + cart)
     }
 
+    if (cart === undefined) {
+        newCart = true
+    } else {
+        editCart = true
+    }
+
+    console.log('newCart: ' + newCart + ' | edit Cart: ' + editCart)
+
     // novo cart e usuário não logado
-    if (!req.isAuthenticated() && req.cookies.sessionId === undefined && cart === undefined && addCartItem) {
-        utils.log('Sessão não existe e usuário não está logado, será criado novo cart!')
+    if (!req.isAuthenticated() && newCart) {
+        utils.log('Usuário não está logado, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let sessionId = await manager.find('/session-id')
@@ -144,8 +160,8 @@ let cartManager = async (req, res, next) => {
     }
 
     // novo cart e usuário logado
-    else if (req.isAuthenticated() && cart[0] === undefined && addCartItem) {
-        utils.log('Usuário está logado e sem cart, será criado novo cart!')
+    else if (req.isAuthenticated() && newCart) {
+        utils.log('Usuário está logado, será criado novo cart!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let newCart = {
@@ -180,43 +196,21 @@ let cartManager = async (req, res, next) => {
         renderCart(req, res, cart[0])
     }
 
-    // já existe cart, mas está vazio (indifere se usuário logado ou não)
-    // else if (req.isAuthenticated() && cart[0] !== undefined && cart[0] !== null && cart[0].products.length == 0 && addCartItem) {
-    //     utils.log('Usuário está logado e já existe cart, mas está vazio!')
-    //     let newItem = {
-    //         '_id': mongoose.Types.ObjectId(product._id),
-    //         'sku': product.sku,
-    //         'title': product.title,
-    //         'price': product.price,
-    //         'discount': product.discount,
-    //         'online': product.online,
-    //         'saleable': product.saleable,
-    //         'qty': 1,
-    //         'images': [{
-    //             'name': product.images[0].name
-    //         }]
-    //     }
-    //     cart[0].products.push(newItem)
-    //     let newCartItem = {
-    //         'products': cart[0].products,
-    //         'changeDate': new Date().toLocaleString()
-    //     }
-    //     await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
-    //     renderCart(req, res, cart[0])
-    // }
+    // cart já existe (usuário logado ou sessão já existente)
+    // else if ((req.isAuthenticated() && cart[0] !== undefined) || (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart[0] !== undefined)) {
+    else if (editCart) {
 
-    else if ((req.isAuthenticated() && cart[0] !== undefined) || (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart === undefined)) {
-
-        utils.log('Sessão já existe ou usuário não está logado e cart não está vazio!')
+        utils.log('Usuário está logado ou não está logado e existe sessão, mas cart não está vazio!')
 
         if (addCartItem || updateCartItemQty || removeCartItem) {
 
-            if (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart === undefined) {
-                utils.log('Sessão já existe, usuário não está logado e cart não está vazio!')
-                cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-            } else {
-                utils.log('Usuário está logado e cart não está vazio!')
-            }
+            // if (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart === undefined) {
+            //     utils.log('Sessão já existe, usuário não está logado e cart não está vazio!')
+            //     cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+            //     console.log('cart: ' + cart[0])
+            // } else {
+            //     utils.log('Usuário está logado e cart não está vazio!')
+            // }
 
             if (cart[0] !== undefined) {
 
