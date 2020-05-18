@@ -99,16 +99,15 @@ let cartManager = async (req, res, next) => {
 
     if (req.isAuthenticated()) {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-        console.log('1) cart (logged): ' + cart[0] + ' / ' + cart)
+        // console.log('1) cart (logged): ' + cart[0] + ' / ' + cart)
     }
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined) {
-        console.log()
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-        console.log('2) cart (session): ' + cart[0] + ' / ' + cart)
+        // console.log('2) cart (session): ' + cart[0] + ' / ' + cart)
     }
     else {
         cart = undefined
-        console.log('3) cart (fake): ' + cart)
+        // console.log('3) cart (fake): ' + cart)
     }
 
     if (cart === undefined) {
@@ -121,7 +120,7 @@ let cartManager = async (req, res, next) => {
 
     // novo cart e usuário não logado
     if (!req.isAuthenticated() && newCart) {
-        utils.log('Usuário não está logado, será criado novo cart!')
+        utils.log('Usuário não está logado, será criado novo cart em sessão!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let sessionId = await manager.find('/session-id')
@@ -161,7 +160,7 @@ let cartManager = async (req, res, next) => {
 
     // novo cart e usuário logado
     else if (req.isAuthenticated() && newCart) {
-        utils.log('Usuário está logado, será criado novo cart!')
+        utils.log('Usuário está logado, será criado novo cart para o usuário!')
         let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
         let newCart = {
@@ -200,7 +199,7 @@ let cartManager = async (req, res, next) => {
     // else if ((req.isAuthenticated() && cart[0] !== undefined) || (!req.isAuthenticated() && req.cookies.sessionId !== undefined && cart[0] !== undefined)) {
     else if (editCart) {
 
-        utils.log('Usuário está logado ou não está logado e existe sessão, mas cart não está vazio!')
+        utils.log('Usuário está logado ou existe cart em sessão e este cart não está vazio!')
 
         if (addCartItem || updateCartItemQty || removeCartItem) {
 

@@ -67,7 +67,7 @@ let loginAPIManager = async (req, res) => {
                     cartUser[0].products.forEach(function (prodUser) {
                         cartSession[0].products.forEach(function (prodSession) {
                             if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
-                                console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                                // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
                                 updateQty = true
                                 if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
                                     prodUser.qty += prodSession.qty
@@ -76,7 +76,7 @@ let loginAPIManager = async (req, res) => {
                                 }
                                 console.log('qty: ' + prodUser.qty)
                             } else {
-                                console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                                // console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
                                 cartUser[0].products.forEach(function (prodAux) {
                                     if (prodSession.sku.localeCompare(prodAux.sku) == 0)
                                         isExists = true
