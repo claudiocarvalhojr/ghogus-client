@@ -12,9 +12,9 @@ let isAuthenticated = (req, res, next) => {
 var isNotAuthenticated = (req, res, next) => {
     utils.log('isNotAuthenticated()...')
     if (!req.isAuthenticated())
-      return next()
+        return next()
     res.redirect('/')
-  }
+}
 
 let isTokenValid = async (req, res, next) => {
     utils.log('isTokenValid()...')
@@ -43,7 +43,7 @@ let isTokenValid = async (req, res, next) => {
     })
 }
 
-function problem(res, codeError) {
+function renderPageError(res, codeError) {
     utils.log('problem()...')
     if (req.isAuthenticated()) {
         return res.render('index', {
@@ -63,9 +63,12 @@ function problem(res, codeError) {
 
 let checkStatus = (res) => {
     utils.log('checkStatus(' + res.status + ')...')
-    // console.log('CODE: ' + res.status + ', TEXT: ' + res.statusText)
     if (res.ok)
         return res
+    else {
+        utils.log('CODE: ' + res.status + ', TEXT: ' + res.statusText)
+        renderPageError(res, res.status)
+    }
 }
 
 let find = async (url) => {
@@ -98,4 +101,4 @@ let send = async (method, url, params) => {
     })
 }
 
-module.exports = { find, send, isAuthenticated, isNotAuthenticated, isTokenValid, problem }
+module.exports = { isAuthenticated, isNotAuthenticated, isTokenValid, renderPageError, find, send }

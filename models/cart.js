@@ -1,10 +1,10 @@
 var mongoose = require('mongoose')
 
 module.exports = mongoose.model('Cart', {
-    id: mongoose.Schema.Types.ObjectId,
+    id: String,
     sessionId: String,
-    isEnabled: String,
-    isGift: String,
+    isEnabled: Boolean,
+    isGift: Boolean,
     voucher: String,
     freight: Object,
     customer: Object,

@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 
 module.exports = mongoose.model('Product', {
-    id: mongoose.Schema.Types.ObjectId,
+    id: String,
     sku: String,
     title: String,
     description: String,

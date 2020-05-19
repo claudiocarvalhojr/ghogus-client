@@ -36,8 +36,10 @@
             <% } %>
 
             <form action="/cart" method="POST" id="formAddItemCart">
-                <input type="hidden" id="addCartItemSKU" name="addCartItemSKU" value="<%= product.sku %>">
-                <input type="submit" id="btnAddProductToCart" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success">
+                <input type="hidden" name="addCartItemSKU" value="<%= product.sku %>">
+                <input type="hidden" name="itemSku" value="<%= product.sku %>">
+                <input type="hidden" name="action" value="add">
+                <input type="submit" name="btnAddProductToCart" value="COMPRAR" class="btn btn-md btn-success">
             </form>
 
         </div>

@@ -121,8 +121,8 @@ let loginAPIManager = async (req, res) => {
             }
             return res.redirect('/cart')
         }
-        res.redirect('/')
     }
+    res.redirect('/')
 }
 
 let logoutAPIManager = async (req, res) => {
