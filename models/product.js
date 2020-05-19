@@ -1,16 +1,20 @@
 var mongoose = require('mongoose');
 
 module.exports = mongoose.model('Product', {
-    id: String,
+    id: mongoose.Schema.Types.ObjectId,
     sku: String,
     title: String,
     description: String,
     price: String,
     discount: String,
-    saleable: Boolean,
     online: Boolean,
-    saleableDate: String,
     onlineDate: String,
-    registerDate: String,
-    Images: [Object]
+    saleable: Boolean,
+    saleableDate: String,
+    images: [Object],
+    root: String,
+    categories: String,
+    subcategories: String,
+    registrationDate: String,
+    changeDate: String
 }); 

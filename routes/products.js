@@ -2,6 +2,8 @@ const utils = require('../utils');
 const manager = require('../manager');
 const express = require('express')
 const router = express.Router()
+var Product = require('../models/product')
+var Image = require('../models/image')
 
 let renderProduct = (req, res, product) => {
     utils.log('renderProduct(' + product.sku + ')...')
@@ -49,26 +51,49 @@ let productManager = async (req, res, action) => {
         let onlineDate = new Date(req.body.onlineDate)
         let saleableDte = new Date(req.body.saleableDate)
         // console.log('VALOR: ' + (parseFloat(price) - (((parseFloat(price) / 100) * discount))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') )
-        let product = {
-            'sku': req.body.sku,
-            'title': req.body.title,
-            'description': req.body.description,
-            'price': price,
-            'discount': discount,
-            'online': online,
-            'onlineDate': onlineDate.toLocaleString(),
-            'saleable': saleable,
-            'saleableDate': saleableDte.toLocaleString(),
-            'indexable': true,
-            'images': [{
-                'name': req.body.image
-            }],
-            'root': null,
-            'categories': null,
-            'subcategories': null,
-            'registrationDate': registrationDate.toLocaleString(),
-            'changeDate': registrationDate.toLocaleString()
-        }
+        
+        // let product = {
+        //     'sku': req.body.sku,
+        //     'title': req.body.title,
+        //     'description': req.body.description,
+        //     'price': price,
+        //     'discount': discount,
+        //     'online': online,
+        //     'onlineDate': onlineDate.toLocaleString(),
+        //     'saleable': saleable,
+        //     'saleableDate': saleableDte.toLocaleString(),
+        //     'indexable': true,
+        //     'images': [{
+        //         'name': req.body.image
+        //     }],
+        //     'root': null,
+        //     'categories': null,
+        //     'subcategories': null,
+        //     'registrationDate': registrationDate.toLocaleString(),
+        //     'changeDate': registrationDate.toLocaleString()
+        // }
+
+        let image = new Image()
+        image.name = req.body.image
+
+        let product = new Product()
+        product.sku = req.body.sku
+        product.title = req.body.title
+        product.description = req.body.description
+        product.price = price
+        product.discount = discount
+        product.online = online
+        product.onlineDate = onlineDate.toLocaleString()
+        product.saleable = saleable
+        product.saleableDate = saleableDte.toLocaleString()
+        product.indexable = true
+        product.images = [image],
+        product.root = null
+        product.categories = null
+        product.subcategories = null
+        product.registrationDate = registrationDate.toLocaleString()
+        product.changeDate = registrationDate.toLocaleString()
+
         let result = await manager.send('post', '/product?token=' + req.session.token, product)
         return res.render('index', {
             page: './templates/products/success',

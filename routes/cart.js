@@ -1,9 +1,11 @@
-const utils = require('../utils');
-const manager = require('../manager');
+const utils = require('../utils')
+const manager = require('../manager')
 const express = require('express')
 const router = express.Router()
 const mongoose = require('mongoose')
-const soap = require('soap');
+const soap = require('soap')
+var Cart = require('../models/cart')
+var Product = require('../models/product')
 
 let renderCart = async (req, res, cart) => {
     utils.log('renderCart()...')
@@ -99,18 +101,18 @@ let cartManager = async (req, res, next) => {
 
     if (req.isAuthenticated()) {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-        // console.log('1) cart (logged): ' + cart[0] + ' / ' + cart)
+        console.log('1) cart (logged): ' + cart[0] + ' / .' + cart + '.')
     }
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined) {
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-        // console.log('2) cart (session): ' + cart[0] + ' / ' + cart)
+        console.log('2) cart (session): ' + cart[0] + ' / ' + cart)
     }
     else {
         cart = undefined
-        // console.log('3) cart (fake): ' + cart)
+        console.log('3) cart (fake): ' + cart)
     }
 
-    if (cart === undefined) {
+    if (cart === undefined || cart == null || cart == '') {
         newCart = true
     } else {
         editCart = true
@@ -121,38 +123,67 @@ let cartManager = async (req, res, next) => {
     // novo cart e usuário não logado
     if (!req.isAuthenticated() && newCart) {
         utils.log('Usuário não está logado, será criado novo cart em sessão!')
-        let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
+        let product = await manager.find('/product/sku/' + sku)
         let sessionId = await manager.find('/session-id')
         // res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 60) * 60) * 24) * 7) })
         res.cookie('sessionId', sessionId.token, { maxAge: ((((1000 * 20) * 1) * 1) * 1) })
-        let newCart = {
-            'sessionId': sessionId.token,
-            'isEnabled': true,
-            'isGift': false,
-            'voucher': null,
-            'freight': {
-                'postalCode': null,
-                'value': '0,0',
-                'deliveryTime': 0
-            },
-            'customer': null,
-            'products': [{
-                '_id': mongoose.Types.ObjectId(product._id),
-                'sku': product.sku,
-                'title': product.title,
-                'price': product.price,
-                'discount': product.discount,
-                'online': product.online,
-                'saleable': product.saleable,
-                'qty': 1,
-                'images': [{
-                    'name': product.images[0].name
-                }]
-            }],
-            'registrationDate': registrationDate.toLocaleString(),
-            'changeDate': registrationDate.toLocaleString()
+
+        // let newCart = {
+        //     'sessionId': sessionId.token,
+        //     'isEnabled': true,
+        //     'isGift': false,
+        //     'voucher': null,
+        //     'freight': {
+        //         'postalCode': null,
+        //         'value': '0,0',
+        //         'deliveryTime': 0
+        //     },
+        //     'customer': null,
+        //     'products': [{
+        //         '_id': mongoose.Types.ObjectId(product._id),
+        //         'sku': product.sku,
+        //         'title': product.title,
+        //         'price': product.price,
+        //         'discount': product.discount,
+        //         'online': product.online,
+        //         'saleable': product.saleable,
+        //         'qty': 1,
+        //         'images': [{
+        //             'name': product.images[0].name
+        //         }]
+        //     }],
+        //     'registrationDate': registrationDate.toLocaleString(),
+        //     'changeDate': registrationDate.toLocaleString()
+        // }
+
+        let newCart = new Cart()
+        newCart.sessionId =  sessionId.token
+        newCart.isEnabled =  true
+        newCart.isGift = false
+        newCart.voucher =  null
+        newCart.freight = {
+            'postalCode': null,
+            'value': '0,0',
+            'deliveryTime': 0
         }
+        newCart.customer = null
+        newCart.products =  [{
+            '_id': mongoose.Types.ObjectId(product._id),
+            'sku': product.sku,
+            'title': product.title,
+            'price': product.price,
+            'discount': product.discount,
+            'online': product.online,
+            'saleable': product.saleable,
+            'qty': 1,
+            'images': [{
+                'name': product.images[0].name
+            }]
+        }]
+        newCart.registrationDate = registrationDate.toLocaleString()
+        newCart.changeDate = registrationDate.toLocaleString()
+
         await manager.send('post', '/cart', newCart)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': sessionId.token, 'isEnabled': true } }))
         renderCart(req, res, cart[0])
@@ -161,35 +192,64 @@ let cartManager = async (req, res, next) => {
     // novo cart e usuário logado
     else if (req.isAuthenticated() && newCart) {
         utils.log('Usuário está logado, será criado novo cart para o usuário!')
-        let product = await manager.find('/product/sku/' + sku)
         let registrationDate = new Date()
-        let newCart = {
-            'sessionId': null,
-            'isEnabled': true,
-            'isGift': false,
-            'voucher': null,
-            'freight': {
-                'postalCode': null,
-                'value': '0,0',
-                'deliveryTime': 0
-            },
-            'customer': { '_id': req.user._id },
-            'products': [{
-                '_id': mongoose.Types.ObjectId(product._id),
-                'sku': product.sku,
-                'title': product.title,
-                'price': product.price,
-                'discount': product.discount,
-                'online': product.online,
-                'saleable': product.saleable,
-                'qty': 1,
-                'images': [{
-                    'name': product.images[0].name
-                }]
-            }],
-            'registrationDate': registrationDate.toLocaleString(),
-            'changeDate': registrationDate.toLocaleString()
+        let product = await manager.find('/product/sku/' + sku)
+
+        // let newCart = {
+        //     'sessionId': null,
+        //     'isEnabled': true,
+        //     'isGift': false,
+        //     'voucher': null,
+        //     'freight': {
+        //         'postalCode': null,
+        //         'value': '0,0',
+        //         'deliveryTime': 0
+        //     },
+        //     'customer': { '_id': req.user._id },
+        //     'products': [{
+        //         '_id': mongoose.Types.ObjectId(product._id),
+        //         'sku': product.sku,
+        //         'title': product.title,
+        //         'price': product.price,
+        //         'discount': product.discount,
+        //         'online': product.online,
+        //         'saleable': product.saleable,
+        //         'qty': 1,
+        //         'images': [{
+        //             'name': product.images[0].name
+        //         }]
+        //     }],
+        //     'registrationDate': registrationDate.toLocaleString(),
+        //     'changeDate': registrationDate.toLocaleString()
+        // }
+
+        let newCart = new Cart()
+        newCart.sessionId =  null
+        newCart.isEnabled =  true
+        newCart.isGift = false
+        newCart.voucher =  null
+        newCart.freight = {
+            'postalCode': null,
+            'value': '0,0',
+            'deliveryTime': 0
         }
+        newCart.customer = { '_id': req.user._id }
+        newCart.products =  [{
+            '_id': mongoose.Types.ObjectId(product._id),
+            'sku': product.sku,
+            'title': product.title,
+            'price': product.price,
+            'discount': product.discount,
+            'online': product.online,
+            'saleable': product.saleable,
+            'qty': 1,
+            'images': [{
+                'name': product.images[0].name
+            }]
+        }]
+        newCart.registrationDate = registrationDate.toLocaleString()
+        newCart.changeDate = registrationDate.toLocaleString()
+
         await manager.send('post', '/cart', newCart)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
         renderCart(req, res, cart[0])

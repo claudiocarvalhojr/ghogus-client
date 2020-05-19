@@ -2,13 +2,15 @@
     <% if (!products || products.length == 0) { %>
         <p>Nenhum produto cadastrado!</p>
     <% } else { products.forEach(function(product) { %>
-        <p>ID: <%= product._id %></p>
-        <p>SKU: <%= product.sku %></p>
-        <p>Título: <%= product.title %></p>
-        <p>Descrição: <%= product.description %></p>
-        <p>Preço: <%= product.price %> Desconto: <%= product.discount %></p>
-        <p>Online: <%= product.online %> Online Date: <%= product.onlineDate %></p>
-        <p>Saleable: <%= product.saleable %> Saleable Date: <%= product.saleableDate %></p>
-        <p>Register Date: <%= product.registerDate %></p>
+    <div style="text-align: justify;">
+        <!-- <b>ID</b>: <%= product._id %> -->
+        <b>SKU</b>: <%= product.sku %> | <b>Title</b>: <%= product.title %> | 
+        <!-- <br><b>Description</b>: <%= product.description %> | <br> -->
+        <b>Price</b>: <%= product.price %> | <b>Discount</b>: <%= product.discount %>% | 
+        <b>Online</b>: <%= product.online %> | <b>Online Date</b>: <%= product.onlineDate %> | 
+        <b>Saleable</b>: <%= product.saleable %> | <b>Saleable Date</b>: <%= product.saleableDate %> | 
+        <b>Registration Date</b>: <%= product.registrationDate %> | <b>Change Date</b>: <%= product.changeDate %>
+        <hr>
+    </div>
     <% })} %>
 </div>
