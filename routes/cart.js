@@ -9,33 +9,25 @@ module.exports = () => {
         cartController.findCart(req, res)
     })
 
-    /* ADD ITEM */
     router.post('/cart', (req, res, next) => {
-        // cartController.cartManager(req, res, 'add')
+
+        /* ADD ITEM */
         if (req.body.action.localeCompare('add') == 0)
             cartController.addItem(req, res)
+
+        /* UPDATE QTY ITEM */
         else if (req.body.action.localeCompare('update') == 0)
-            cartController.cartManager(req, res)
+            cartController.updateItemQty(req, res)
+
+        /* REMOVE ITEM */
         else if (req.body.action.localeCompare('remove') == 0)
-            cartController.cartManager(req, res)
+            cartController.removeItem(req, res)
+
+        /* CALC FREIGHT */
         else if (req.body.action.localeCompare('freight') == 0)
             cartController.freightCalculation(req, res)
+
     })
-
-    // /* UPDATE ITEM */
-    // router.post('/cart/item/update', (req, res, next) => {
-    //     cartController.cartManager(req, res, 'update')
-    // })
-
-    // /* REMOVE ITEM */
-    // router.post('/cart/item/remove', (req, res, next) => {
-    //     cartController.cartManager(req, res, 'remove')
-    // })
-
-    // /* CALC FREIGHT */
-    // router.post('/cart/freight', (req, res, next) => {
-    //     cartController.cartManager(req, res, 'freight')
-    // })
 
     return router
 

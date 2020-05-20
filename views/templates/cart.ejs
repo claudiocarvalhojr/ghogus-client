@@ -36,6 +36,7 @@
                                     <td style="width: 10%; padding-top: 20px;">
                                         <form action="/cart" method="POST" name="formUpdateQtyItemCart">
                                             <input type="hidden" name="updateCartItemQtySKU" value="<%= product.sku %>">
+                                            <input type="hidden" name="cartId" value="<%= cart._id %>">
                                             <input type="hidden" name="itemSku" value="<%= product.sku %>">
                                             <input type="hidden" name="action" value="update">
                                             <select name="qty" class="form-control" style="width: 60px;" onchange="this.form.submit()">
@@ -49,6 +50,7 @@
                                     <td style="width: 10%; padding-top: 20px; font-size: large; font-weight: bold;">
                                         <form action="/cart" method="POST" name="formRemoveItemCart">
                                             <input type="hidden" name="removeCartItemSKU" value="<%= product.sku %>">
+                                            <input type="hidden" name="cartId" value="<%= cart._id %>">
                                             <input type="hidden" name="itemSku" value="<%= product.sku %>">
                                             <input type="hidden" name="action" value="remove">
                                             <input type="submit" name="btnRemoveProductFromCart" value="X" class="btn btn-md btn-danger">
@@ -78,7 +80,7 @@
                                     <form action="/cart" method="POST" name="formFreightCalculationCart">
                                         <div class="row">
                                             <div class="float-left" style="width: 77%;">
-                                                <input type="hidden" name="freightCartId" value="<%= cart._id %>">
+                                                <input type="hidden" name="cartId" value="<%= cart._id %>">
                                                 <input type="hidden" name="action" value="freight">
                                                 <input type="text" class="form-control" style="width: 100%;" id="postalCode" name="postalCode" placeholder="Digite o CEP" value="<%= cart.freight.postalCode %>" required>
                                             </div>

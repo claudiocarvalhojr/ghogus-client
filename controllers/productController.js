@@ -44,11 +44,11 @@ let productManager = async (req, res, action) => {
         let online = false
         if (req.body.online)
             online = true
-        let saleable = false
-        if (req.body.saleable)
-            saleable = true
+        let sellable = false
+        if (req.body.sellable)
+            sellable = true
         let onlineDate = new Date(req.body.onlineDate)
-        let saleableDte = new Date(req.body.saleableDate)
+        let sellableDate = new Date(req.body.sellableDate)
         // console.log('VALOR: ' + (parseFloat(price) - (((parseFloat(price) / 100) * discount))).toFixed(2).replace('.', ',').split('').reverse().map((v, i) => i > 5 && (i + 6) % 3 === 0 ? `${v}.` : v).reverse().join('') )
         
         let product = {
@@ -59,8 +59,8 @@ let productManager = async (req, res, action) => {
             'discount': discount,
             'online': online,
             'onlineDate': onlineDate.toLocaleString(),
-            'saleable': saleable,
-            'saleableDate': saleableDte.toLocaleString(),
+            'sellable': sellable,
+            'sellableDate': sellableDate.toLocaleString(),
             'indexable': true,
             'images': [{
                 'name': req.body.image
@@ -84,8 +84,8 @@ let productManager = async (req, res, action) => {
         // product.discount = discount
         // product.online = online
         // product.onlineDate = onlineDate.toLocaleString()
-        // product.saleable = saleable
-        // product.saleableDate = saleableDte.toLocaleString()
+        // product.sellable = sellable
+        // product.sellableDate = sellableDate.toLocaleString()
         // product.indexable = true
         // product.images = [image],
         // product.root = null
