@@ -22,8 +22,67 @@ let productsHome = async (req, res) => {
     })
 }
 
-let mergeCart = async (req, res) => {
+let mergeCartSession = async (req, res, cartUser, cartSession) => {
+    utils.log('mergeCartSession(' + cartUser[0]._id + ',' + cartSession[0]._id + ')...')
+    let addItem = false
+    let updateQty = false
+    let isExists = false
+    cartUser[0].products.forEach(function (prodUser) {
+        cartSession[0].products.forEach(function (prodSession) {
+            if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
+                // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                updateQty = true
+                if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
+                    prodUser.qty += prodSession.qty
+                } else {
+                    prodUser.qty = process.env.LIMIT_QTY_ITEM_CART
+                }
+                console.log('qty: ' + prodUser.qty)
+            } else {
+                // console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                cartUser[0].products.forEach(function (prodAux) {
+                    if (prodSession.sku.localeCompare(prodAux.sku) == 0)
+                        isExists = true
+                })
+                if (!isExists) {
+                    addItem = true
+                    cartUser[0].products.push(prodSession)
+                    isExists = false
+                }
+            }
+        })
+    })
+    if (updateQty) {
+        utils.log('patch/cart-user/merge/products/qtys...')
+        let updateCartItemsQty = {
+            'products': cartUser[0].products,
+            'changeDate': new Date().toLocaleString()
+        }
+        await manager.send('patch', '/cart/many/' + cartUser[0]._id, updateCartItemsQty)
+    }
+    if (addItem) {
+        utils.log('patch/cart-user/merge/products...')
+        let addCartItems = {
+            'products': cartUser[0].products,
+            'changeDate': new Date().toLocaleString()
+        }
+        await manager.send('patch', '/cart/push/' + cartUser[0]._id, addCartItems)
+    }
+    if (updateQty || addItem) {
+        utils.log('patch/cart-session/disable...')
+        let isEnabled = { 'isEnabled': false }
+        await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
+        res.clearCookie('sessionId')
+    }
+    // return res.redirect('/cart')
+}
 
+let mergeCartUser = async (req, res, cartSession) => {
+    utils.log('mergeCartUser(' + cartSession[0]._id + ',' + req.user._id + ')...')
+    let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
+    await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
+    res.clearCookie('sessionId')
+    // return res.redirect('/cart')
 }
 
 let loginAPIManager = async (req, res) => {
@@ -36,87 +95,10 @@ let loginAPIManager = async (req, res) => {
             if (cartSession[0] !== undefined && cartSession[0] !== null && cartSession[0].isEnabled) {
                 let cartUser = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
                 if (cartUser[0] !== undefined && cartUser[0] !== null && cartUser[0].isEnabled) {
-                    let addItem = false
-                    let updateQty = false
-                    let isExists = false
-                    // for (let i = 0; i < cartUser[0].products.length; i++) {
-                    //     for (let j = 0; j < cartSession[0].products.length; j++) {
-                    //         if (cartUser[0].products[i].sku.localeCompare(cartSession[0].products[j].sku) == 0) {
-                    //             console.log('IGUAIS, sku(user)1: ' + cartUser[0].products[i].sku + ' e sku(session)2: ' + cartSession[0].products[j].sku)
-                    //             updateQty = true
-                    //             if ((cartUser[0].products[i].qty + cartSession[0].products[j].qty) <= process.env.LIMIT_QTY_ITEM_CART) {
-                    //                 cartUser[0].products[i].qty += cartSession[0].products[j].qty
-                    //             } else {
-                    //                 cartUser[0].products[i].qty = process.env.LIMIT_QTY_ITEM_CART
-                    //             }
-                    //             console.log('qty: ' + cartUser[0].products[i].qty)
-                    //         } else {
-                    //             console.log('DIFERENTES, sku(user)1: ' + cartUser[0].products[i].sku + ' e sku(session)2: ' + cartSession[0].products[j].sku)
-                    //             cartUser[0].products.forEach(function (prodAux) {
-                    //                 if (cartSession[0].products[j].sku.localeCompare(prodAux.sku) == 0)
-                    //                     isExists = true
-                    //             })
-                    //             if (!isExists) {
-                    //                 addItem = true
-                    //                 cartUser[0].products.push(cartSession[0].products[j])
-                    //                 isExists = false
-                    //             }
-                    //         }
-                    //     }
-                    // }
-                    cartUser[0].products.forEach(function (prodUser) {
-                        cartSession[0].products.forEach(function (prodSession) {
-                            if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
-                                // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
-                                updateQty = true
-                                if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
-                                    prodUser.qty += prodSession.qty
-                                } else {
-                                    prodUser.qty = process.env.LIMIT_QTY_ITEM_CART
-                                }
-                                console.log('qty: ' + prodUser.qty)
-                            } else {
-                                // console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
-                                cartUser[0].products.forEach(function (prodAux) {
-                                    if (prodSession.sku.localeCompare(prodAux.sku) == 0)
-                                        isExists = true
-                                })
-                                if (!isExists) {
-                                    addItem = true
-                                    cartUser[0].products.push(prodSession)
-                                    isExists = false
-                                }
-                            }
-                        })
-                    })
-                    if (updateQty) {
-                        utils.log('patch/cart-user/merge/products/qtys...')
-                        let updateCartItemsQty = {
-                            'products': cartUser[0].products,
-                            'changeDate': new Date().toLocaleString()
-                        }
-                        await manager.send('patch', '/cart/many/' + cartUser[0]._id, updateCartItemsQty)
-                    }
-                    if (addItem) {
-                        utils.log('patch/cart-user/merge/products...')
-                        let addCartItems = {
-                            'products': cartUser[0].products,
-                            'changeDate': new Date().toLocaleString()
-                        }
-                        await manager.send('patch', '/cart/push/' + cartUser[0]._id, addCartItems)
-                    }
-                    if (updateQty || addItem) {
-                        utils.log('patch/cart-session/disable...')
-                        let isEnabled = { 'isEnabled': false }
-                        await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
-                        res.clearCookie('sessionId')
-                    }
+                    mergeCartSession(req, res, cartUser, cartSession)
                 }
                 else if (cartUser[0] === undefined || cartUser[0] === null) {
-                    utils.log('patch/cart-session/update/user...')
-                    let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
-                    await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
-                    res.clearCookie('sessionId')
+                    mergeCartUser(req, res, cartSession)
                 }
             }
             return res.redirect('/cart')

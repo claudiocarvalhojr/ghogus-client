@@ -58,17 +58,33 @@ let cartResume = (cart) => {
     return resume
 }
 
+let simpleProduct = (product) => {
+    return {
+        '_id': mongoose.Types.ObjectId(product._id),
+        'sku': product.sku,
+        'title': product.title,
+        'price': product.price,
+        'discount': product.discount,
+        'online': product.online,
+        'saleable': product.saleable,
+        'qty': 1,
+        'images': [{
+            'name': product.images[0].name
+        }]
+    }
+}
+
 let addItem = async (req, res) => {
-    utils.log('cartController.addItem()...')
+    let itemSku = req.body.itemSku
+    utils.log('cartController.addItem(' + itemSku + ')...')
     let registrationDate = new Date()
     let cart = null
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-    else
+    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
     if (cart === undefined || cart == null || cart == '') {
-        // let sku = req.body.itemSku
-        let product = await manager.find('/product/sku/' + req.body.itemSku)
+        let product = await manager.find('/product/sku/' + itemSku)
         let sessionId = null
         let customer = null
         if (!req.isAuthenticated()) {
@@ -90,19 +106,7 @@ let addItem = async (req, res) => {
                 'deliveryTime': 0
             },
             'customer': customer,
-            'products': [{
-                '_id': mongoose.Types.ObjectId(product._id),
-                'sku': product.sku,
-                'title': product.title,
-                'price': product.price,
-                'discount': product.discount,
-                'online': product.online,
-                'saleable': product.saleable,
-                'qty': 1,
-                'images': [{
-                    'name': product.images[0].name
-                }]
-            }],
+            'products': [simpleProduct(product)],
             'registrationDate': registrationDate.toLocaleString(),
             'changeDate': registrationDate.toLocaleString()
         }
@@ -121,25 +125,13 @@ let addItem = async (req, res) => {
 }
 
 let addItemOrUpdateItemQty = async (req, res, cart) => {
-    utils.log('cartController(' + cart[0]._id + ').addItemOrUpdateItemQty(' + req.body.itemSku + ')...')
-    let position = utils.position(cart[0], req.body.itemSku)
+    let itemSku = req.body.itemSku
+    utils.log('cartController(' + cart[0]._id + ').addItemOrUpdateItemQty(' + itemSku + ')...')
+    let position = utils.position(cart[0], itemSku)
     if (position < 0) {
         utils.log('patch/cart/add/product...')
-        let product = await manager.find('/product/SKU/' + req.body.itemSku)
-        let newItem = {
-            '_id': mongoose.Types.ObjectId(product._id),
-            'sku': product.sku,
-            'title': product.title,
-            'price': product.price,
-            'discount': product.discount,
-            'online': product.online,
-            'saleable': product.saleable,
-            'qty': 1,
-            'images': [{
-                'name': product.images[0].name
-            }]
-        }
-        cart[0].products.push(newItem)
+        let product = await manager.find('/product/SKU/' + itemSku)
+        cart[0].products.push(simpleProduct(product))
         let newCartItem = {
             'products': cart[0].products,
             'changeDate': new Date().toLocaleString()
@@ -167,15 +159,17 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
 }
 
 let updateItemQty = async (req, res) => {
-    utils.log('cartController(' + req.body.cartId + ').updateItemQty(' + req.body.itemSku + ')...')
+    let cartId = req.body.cartId
+    let itemSku = req.body.itemSku
+    utils.log('cartController(' + cartId + ').updateItemQty(' + itemSku + ')...')
     let cart = null
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-    // let cart = await manager.find('/cart/' + req.body.cartId)
+    // let cart = await manager.find('/cart/' + cartId)
     if (cart !== undefined && cart != null || cart != '') {
-        let position = utils.position(cart[0], req.body.itemSku)
+        let position = utils.position(cart[0], itemSku)
         let itemQty = parseInt(req.body.qty, 10)
         if (position >= 0 && itemQty <= process.env.LIMIT_QTY_ITEM_CART) {
             cart[0].products[position].qty = itemQty
@@ -191,15 +185,17 @@ let updateItemQty = async (req, res) => {
 }
 
 let removeItem = async (req, res) => {
-    utils.log('cartController(' + req.body.cartId + ').removeItem(' + req.body.itemSku + ')...')
+    let cartId = req.body.cartId
+    let itemSku = req.body.itemSku
+    utils.log('cartController(' + cartId + ').removeItem(' + itemSku + ')...')
     let cart = null
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-    // let cart = await manager.find('/cart/' + req.body.cartId)
+    // let cart = await manager.find('/cart/' + cartId)
     if (cart !== undefined && cart != null || cart != '') {
-        let position = utils.position(cart[0], req.body.itemSku)
+        let position = utils.position(cart[0], itemSku)
         if (position >= 0) {
             let remove = { 'products': { '_id': cart[0].products[position]._id } }
             await manager.send('patch', '/cart/pull/' + cart[0]._id, remove)
@@ -211,15 +207,16 @@ let removeItem = async (req, res) => {
 }
 
 let freightCalculation = async (req, res) => {
-    utils.log('cartController(' + req.body.cartId + ').freightCalculation(' + req.body.postalCode + ')...')
+    let cartId = req.body.cartId
+    let postalCode = req.body.postalCode
+    utils.log('cartController(' + cartId + ').freightCalculation(' + postalCode + ')...')
     let cart = null
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-    // let cart = await manager.find('/cart/' + req.body.cartId)
+    // let cart = await manager.find('/cart/' + cartId)
     if (cart !== undefined && cart != null || cart != '') {
-        let postalCode = req.body.postalCode
         if (cart[0].freight.postalCode == null || cart[0].freight.postalCode.localeCompare(postalCode) != 0 || cart[0].freight.fallback == null || cart[0].freight.fallback == true) {
             let freight = await calculation(postalCode)
             let updateCartPostalCode = { 'freight': { 'fallback': freight.fallback, 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime }, 'changeDate': new Date().toLocaleString() }
@@ -321,4 +318,4 @@ let findCart = async (req, res) => {
     }
 }
 
-module.exports = { addItem, addItemOrUpdateItemQty, updateItemQty, removeItem, freightCalculation, findCart }
+module.exports = { addItem, updateItemQty, removeItem, freightCalculation, findCart }
