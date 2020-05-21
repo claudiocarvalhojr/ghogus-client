@@ -2,6 +2,7 @@ const utils = require('../utils')
 const manager = require('../manager')
 const express = require('express')
 const router = express.Router()
+const cartController = require('../controllers/cartController')
 
 let productsHome = async (req, res) => {
     utils.log('productsHome()... ')
@@ -27,31 +28,38 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
     let addItem = false
     let updateQty = false
     let isExists = false
-    cartUser[0].products.forEach(function (prodUser) {
-        cartSession[0].products.forEach(function (prodSession) {
-            if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
-                // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
-                updateQty = true
-                if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
-                    prodUser.qty += prodSession.qty
+    if (cartUser[0].products.length > 0) {
+        cartUser[0].products.forEach(function (prodUser) {
+            cartSession[0].products.forEach(function (prodSession) {
+                if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
+                    // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                    updateQty = true
+                    if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
+                        prodUser.qty += prodSession.qty
+                    } else {
+                        prodUser.qty = process.env.LIMIT_QTY_ITEM_CART
+                    }
+                    console.log('qty: ' + prodUser.qty)
                 } else {
-                    prodUser.qty = process.env.LIMIT_QTY_ITEM_CART
+                    // console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
+                    cartUser[0].products.forEach(function (prodAux) {
+                        if (prodSession.sku.localeCompare(prodAux.sku) == 0)
+                            isExists = true
+                    })
+                    if (!isExists) {
+                        addItem = true
+                        cartUser[0].products.push(prodSession)
+                        isExists = false
+                    }
                 }
-                console.log('qty: ' + prodUser.qty)
-            } else {
-                // console.log('DIFERENTES, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
-                cartUser[0].products.forEach(function (prodAux) {
-                    if (prodSession.sku.localeCompare(prodAux.sku) == 0)
-                        isExists = true
-                })
-                if (!isExists) {
-                    addItem = true
-                    cartUser[0].products.push(prodSession)
-                    isExists = false
-                }
-            }
+            })
         })
-    })
+    } else {
+        addItem = true
+        cartSession[0].products.forEach(function (product) {
+            cartUser[0].products.push(product)
+        })
+    }
     if (updateQty) {
         utils.log('patch/cart-user/merge/products/qtys...')
         let updateCartItemsQty = {
@@ -73,8 +81,9 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
         let isEnabled = { 'isEnabled': false }
         await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
         res.clearCookie('sessionId')
+        cartController.freightCalculation(req, res, cartUser, true)
     }
-    // return res.redirect('/cart')
+    // res.redirect('/cart')
 }
 
 let mergeCartUser = async (req, res, cartSession) => {
@@ -82,7 +91,7 @@ let mergeCartUser = async (req, res, cartSession) => {
     let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
     await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
     res.clearCookie('sessionId')
-    // return res.redirect('/cart')
+    res.redirect('/cart')
 }
 
 let loginAPIManager = async (req, res) => {
@@ -94,17 +103,18 @@ let loginAPIManager = async (req, res) => {
             let cartSession = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
             if (cartSession[0] !== undefined && cartSession[0] !== null && cartSession[0].isEnabled) {
                 let cartUser = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-                if (cartUser[0] !== undefined && cartUser[0] !== null && cartUser[0].isEnabled) {
+                if (cartUser[0] !== undefined && cartUser[0] !== null && cartUser[0].isEnabled)
                     mergeCartSession(req, res, cartUser, cartSession)
-                }
-                else if (cartUser[0] === undefined || cartUser[0] === null) {
+                else if (cartUser[0] === undefined || cartUser[0] === null)
                     mergeCartUser(req, res, cartSession)
-                }
-            }
-            return res.redirect('/cart')
-        }
-    }
-    res.redirect('/')
+                else
+                    res.redirect('/')
+            } else
+                res.redirect('/')
+        } else
+            res.redirect('/')
+    } else
+        res.redirect('/')
 }
 
 let logoutAPIManager = async (req, res) => {

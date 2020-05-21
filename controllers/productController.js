@@ -5,7 +5,7 @@ const utils = require('../utils')
 // const Image = require('../models/image')
 
 let renderProduct = (req, res, product) => {
-    utils.log('renderProduct(' + product.sku + ')...')
+    utils.log('productController.renderProduct(' + product.sku + ')...')
     if (req.isAuthenticated()) {
         return res.render('index', {
             page: './templates/product',
@@ -23,7 +23,7 @@ let renderProduct = (req, res, product) => {
 }
 
 let productManager = async (req, res, action) => {
-    utils.log('productManager(' + action + ')...')
+    utils.log('productController.productManager(' + action + ')...')
     if (action === 'form') {
         utils.log('get/product/form...')
         let date = new Date()

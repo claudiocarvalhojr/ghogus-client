@@ -4,7 +4,7 @@ const mongoose = require('mongoose')
 const soap = require('soap')
 // const Cart = require('../models/cart')
 
-let renderCart = async (req, res, cart) => {
+let renderCart = (req, res, cart) => {
     utils.log('renderCart()...')
     if (cart != null && cart.products.length == 0)
         cart = null
@@ -58,7 +58,7 @@ let cartResume = (cart) => {
     return resume
 }
 
-let simpleProduct = (product) => {
+let itemCart = (product) => {
     return {
         '_id': mongoose.Types.ObjectId(product._id),
         'sku': product.sku,
@@ -66,7 +66,7 @@ let simpleProduct = (product) => {
         'price': product.price,
         'discount': product.discount,
         'online': product.online,
-        'saleable': product.saleable,
+        'sellable': product.sellable,
         'qty': 1,
         'images': [{
             'name': product.images[0].name
@@ -100,13 +100,13 @@ let addItem = async (req, res) => {
             'isGift': false,
             'voucher': null,
             'freight': {
-                'fallback': null,
+                'isFallback': null,
                 'postalCode': null,
                 'value': '0,0',
                 'deliveryTime': 0
             },
             'customer': customer,
-            'products': [simpleProduct(product)],
+            'products': [itemCart(product)],
             'registrationDate': registrationDate.toLocaleString(),
             'changeDate': registrationDate.toLocaleString()
         }
@@ -131,13 +131,16 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
     if (position < 0) {
         utils.log('patch/cart/add/product...')
         let product = await manager.find('/product/SKU/' + itemSku)
-        cart[0].products.push(simpleProduct(product))
+        cart[0].products.push(itemCart(product))
         let newCartItem = {
             'products': cart[0].products,
             'changeDate': new Date().toLocaleString()
         }
         await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
-        return renderCart(req, res, cart[0])
+        if (cart[0].freight.postalCode != null)
+            freightCalculation(req, res, cart, true)
+        else
+            return renderCart(req, res, cart[0])
     }
     // item existe, e está abaixo da qty máxima, qty será incrementada
     else if (position >= 0 && cart[0].products[position].qty < process.env.LIMIT_QTY_ITEM_CART) {
@@ -148,14 +151,17 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
             'changeDate': new Date().toLocaleString()
         }
         await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
-        return renderCart(req, res, cart[0])
+        if (cart[0].freight.postalCode != null)
+            freightCalculation(req, res, cart, true)
+        else
+            return renderCart(req, res, cart[0])
     }
     // item existe, mas já atingiu a qty máxima
     else if (position >= 0 && cart[0].products[position].qty == process.env.LIMIT_QTY_ITEM_CART) {
         utils.log('patch/cart/update/product/max...')
         return renderCart(req, res, cart[0])
-    }
-    renderCart(req, res, null)
+    } else
+        renderCart(req, res, null)
 }
 
 let updateItemQty = async (req, res) => {
@@ -178,10 +184,14 @@ let updateItemQty = async (req, res) => {
                 'changeDate': new Date().toLocaleString()
             }
             await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
-        }
-        return renderCart(req, res, cart[0])
-    }
-    renderCart(req, res, null)
+            if (cart[0].freight.postalCode != null)
+                freightCalculation(req, res, cart, true)
+            else
+                return renderCart(req, res, cart[0])
+        } else
+            return renderCart(req, res, cart[0])
+    } else
+        renderCart(req, res, null)
 }
 
 let removeItem = async (req, res) => {
@@ -200,39 +210,73 @@ let removeItem = async (req, res) => {
             let remove = { 'products': { '_id': cart[0].products[position]._id } }
             await manager.send('patch', '/cart/pull/' + cart[0]._id, remove)
             cart[0].products.splice(position, 1)
-        }
-        return renderCart(req, res, cart[0])
-    }
-    renderCart(req, res, null)
+            if (cart[0].freight.postalCode != null)
+                freightCalculation(req, res, cart, true)
+            else
+                return renderCart(req, res, cart[0])
+        } else
+            return renderCart(req, res, cart[0])
+    } else
+        renderCart(req, res, null)
 }
 
-let freightCalculation = async (req, res) => {
-    let cartId = req.body.cartId
-    let postalCode = req.body.postalCode
-    utils.log('cartController(' + cartId + ').freightCalculation(' + postalCode + ')...')
-    let cart = null
-    if (req.isAuthenticated())
-        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
-        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-    // let cart = await manager.find('/cart/' + cartId)
-    if (cart !== undefined && cart != null || cart != '') {
-        if (cart[0].freight.postalCode == null || cart[0].freight.postalCode.localeCompare(postalCode) != 0 || cart[0].freight.fallback == null || cart[0].freight.fallback == true) {
-            let freight = await calculation(postalCode)
-            let updateCartPostalCode = { 'freight': { 'fallback': freight.fallback, 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime }, 'changeDate': new Date().toLocaleString() }
-            await manager.send('patch', '/cart/' + cart[0]._id, updateCartPostalCode)
-            cart[0].freight.fallback = freight.fallback
-            cart[0].freight.postalCode = postalCode
-            cart[0].freight.value = freight.value
-            cart[0].freight.deliveryTime = freight.deliveryTime
-        }
-        return renderCart(req, res, cart[0])
+let freightCalculation = async (req, res, cart, isRenderCart) => {
+    let cartId = null
+    let postalCode = null
+    if (cart === undefined || cart == null || cart == '') {
+        cartId = req.body.cartId
+        postalCode = req.body.postalCode
+        if (req.isAuthenticated())
+            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
+        else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
+            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+        // cart = await manager.find('/cart/' + cartId)
     }
-    renderCart(req, res, null)
+    else {
+        cartId = cart[0]._id
+        // if (cart[0].freight.postalCode != null)
+        postalCode = cart[0].freight.postalCode
+    }
+    if (cart !== undefined && cart != null && cart != '') {
+        let itemsQty = 0
+        if (cart[0].products.length > 0) {
+            cart[0].products.forEach(function (product) {
+                itemsQty += product.qty
+            })
+            console.log('itemsQty: ' + itemsQty.toString())
+        }
+        utils.log('cartController(' + cartId + ').freightCalculation(' + postalCode + ',' + itemsQty + ')...')
+        if (postalCode != null) {
+            if (cart[0].freight.postalCode.localeCompare(postalCode) != 0 || cart[0].freight.isFallback == null || cart[0].freight.isFallback == true || cart[0].freight.itemsQty.localeCompare(itemsQty.toString()) != 0) {
+                let freight = await calculation(postalCode, itemsQty.toString())
+                let updateCartPostalCode = { 'freight': { 'isFallback': freight.isFallback, 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime, 'itemsQty': freight.itemsQty }, 'changeDate': new Date().toLocaleString() }
+                await manager.send('patch', '/cart/' + cart[0]._id, updateCartPostalCode)
+                cart[0].freight.isFallback = freight.isFallback
+                cart[0].freight.postalCode = postalCode
+                cart[0].freight.value = freight.value
+                cart[0].freight.deliveryTime = freight.deliveryTime
+            }
+        }
+        if (isRenderCart)
+            return renderCart(req, res, cart[0])
+    } else {
+        if (isRenderCart)
+            renderCart(req, res, null)
+    }
 }
 
-let calculation = async (postalCode) => {
-    utils.log('freightCalculation()...')
+let freightFallback = (postalCode, itemsQty) => {
+    return {
+        'isFallback': true,
+        'postalCode': postalCode,
+        'value': '25,00',
+        'deliveryTime': 10,
+        'itemsQty': itemsQty
+    }
+}
+
+let calculation = async (postalCode, itemsQty) => {
+    utils.log('calculation(' + postalCode + ',' + itemsQty + ')...')
     return new Promise((resolve, reject) => {
         let freight = null
         postalCode = postalCode.replace('-', '')
@@ -244,7 +288,7 @@ let calculation = async (postalCode) => {
             nCdServico: '04510', // PAC
             sCepOrigem: '93950000',
             sCepDestino: postalCode,
-            nVlPeso: '1',
+            nVlPeso: itemsQty,
             nCdFormato: 3,
             nVlComprimento: '0',
             nVlAltura: '0',
@@ -257,33 +301,24 @@ let calculation = async (postalCode) => {
         soap.createClient(url, (err, client) => {
             if (err) {
                 console.error('Error 1: ' + err)
-                freight = {
-                    'fallback': true,
-                    'postalCode': postalCode,
-                    'value': '25,00',
-                    'deliveryTime': 10
-                }
+                freight = freightFallback(postalCode, itemsQty)
                 resolve(freight)
             }
             else {
                 client.CalcPrecoPrazo(params, (err, result) => {
                     if (err) {
                         console.error('Error 2: ' + err)
-                        freight = {
-                            'fallback': true,
-                            'postalCode': postalCode,
-                            'value': '25,00',
-                            'deliveryTime': 10
-                        }
+                        freight = freightFallback(postalCode, itemsQty)
                         resolve(freight)
                     }
                     else {
                         // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
                         freight = {
-                            'fallback': false,
+                            'isFallback': false,
                             'postalCode': postalCode,
                             'value': result.CalcPrecoPrazoResult.Servicos.cServico[0].Valor,
-                            'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega
+                            'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega,
+                            'itemsQty': itemsQty
                         }
                         resolve(freight)
                     }
@@ -313,7 +348,10 @@ let findCart = async (req, res) => {
         else {
             utils.log('get/cart/find/last/session...')
             let cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-            renderCart(req, res, cart[0])
+            if (cart[0] !== undefined)
+                renderCart(req, res, cart[0])
+            else
+                renderCart(req, res, null)
         }
     }
 }
