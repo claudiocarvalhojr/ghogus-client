@@ -5,7 +5,7 @@ const router = express.Router()
 const cartController = require('../controllers/cartController')
 
 let productsHome = async (req, res) => {
-    utils.log('productsHome()... ')
+    utils.log('index.productsHome()... ')
     let products = await manager.find('/products')
     if (req.isAuthenticated()) {
         return res.render('index', {
@@ -24,16 +24,17 @@ let productsHome = async (req, res) => {
 }
 
 let mergeCartSession = async (req, res, cartUser, cartSession) => {
-    utils.log('mergeCartSession(' + cartUser[0]._id + ',' + cartSession[0]._id + ')...')
+    utils.log('index.mergeCartSession(' + cartUser[0]._id + ',' + cartSession[0]._id + ')...')
     let addItem = false
-    let updateQty = false
+    let updateItemQty = false
+    let freightCart = false
     let isExists = false
     if (cartUser[0].products.length > 0) {
         cartUser[0].products.forEach(function (prodUser) {
             cartSession[0].products.forEach(function (prodSession) {
                 if (prodSession.sku.localeCompare(prodUser.sku) == 0) {
                     // console.log('IGUAIS, sku(user)1: ' + prodUser.sku + ' e sku(session)2: ' + prodSession.sku)
-                    updateQty = true
+                    updateItemQty = true
                     if ((prodUser.qty + prodSession.qty) <= process.env.LIMIT_QTY_ITEM_CART) {
                         prodUser.qty += prodSession.qty
                     } else {
@@ -60,8 +61,8 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
             cartUser[0].products.push(product)
         })
     }
-    if (updateQty) {
-        utils.log('patch/cart-user/merge/products/qtys...')
+    if (updateItemQty) {
+        utils.log('patch/cart-user/merge/products-qty...')
         let updateCartItemsQty = {
             'products': cartUser[0].products,
             'changeDate': new Date().toLocaleString()
@@ -76,26 +77,59 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
         }
         await manager.send('patch', '/cart/push/' + cartUser[0]._id, addCartItems)
     }
-    if (updateQty || addItem) {
+    if ((cartUser[0].freight.postalCode == null && cartSession[0].freight.postalCode != null) || (cartUser[0].freight.postalCode != null && cartSession[0].freight.postalCode != null && cartUser[0].freight.postalCode.localeCompare(cartSession[0].freight.postalCode) != 0)) {
+        utils.log('patch/cart-user/merge/freight...')
+        freightCart = true
+        let itemsQty = 0
+        if (cartUser[0].products.length > 0) {
+            cartUser[0].products.forEach(function (product) {
+                itemsQty += product.qty
+            })
+            console.log('itemsQty: ' + itemsQty.toString() + ' / CEP: ' + cartUser[0].freight.postalCode)
+        }
+       let updateFreightCart = {
+            'freight': {
+                'isFallback': cartSession[0].freight.isFallback,
+                'postalCode': cartSession[0].freight.postalCode,
+                'value': cartSession[0].freight.value,
+                'deliveryTime': cartSession[0].freight.deliveryTime,
+                'itemsQty': itemsQty
+            },
+            'changeDate': new Date().toLocaleString()
+        }
+        await manager.send('patch', '/cart/' + cartUser[0]._id, updateFreightCart)
+        cartUser[0].freight.isFallback = cartSession[0].freight.isFallback
+        cartUser[0].freight.postalCode = cartSession[0].postalCode
+        cartUser[0].freight.value = cartSession[0].freight.value
+        cartUser[0].freight.deliveryTime = cartSession[0].freight.deliveryTime
+        cartUser[0].freight.itemsQty = itemsQty
+    }
+    if (updateItemQty || addItem || freightCart) {
         utils.log('patch/cart-session/disable...')
         let isEnabled = { 'isEnabled': false }
         await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
         res.clearCookie('sessionId')
-        cartController.freightCalculation(req, res, cartUser, true)
+        cartController.freight(req, res, cartUser, true)
     }
     // res.redirect('/cart')
 }
 
 let mergeCartUser = async (req, res, cartSession) => {
-    utils.log('mergeCartUser(' + cartSession[0]._id + ',' + req.user._id + ')...')
-    let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
+    utils.log('index.mergeCartUser(' + cartSession[0]._id + ',' + req.user._id + ')...')
+    let updateUser = {
+        'customer': {
+            '_id': req.user._id
+        },
+        'changeDate': new Date().toLocaleString()
+    }
     await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
     res.clearCookie('sessionId')
+    // cartController.freight(req, res, cartUser, true)
     res.redirect('/cart')
 }
 
 let loginAPIManager = async (req, res) => {
-    utils.log('loginAPIManager()...')
+    utils.log('index.loginAPIManager()...')
     let result = await manager.send('post', '/login', { 'id': req.user._id, 'email': req.user.email })
     if (result.auth) {
         req.session.token = result.token
@@ -118,7 +152,7 @@ let loginAPIManager = async (req, res) => {
 }
 
 let logoutAPIManager = async (req, res) => {
-    utils.log('logoutAPIManager()...')
+    utils.log('index.logoutAPIManager()...')
     let result = await manager.find('/logout')
     req.session.token = result.token
     req.logout()
@@ -126,7 +160,7 @@ let logoutAPIManager = async (req, res) => {
 }
 
 let userManager = async (req, res) => {
-    utils.log('userManager()...')
+    utils.log('index.userManager(' + req.user._id + ')...')
     let user = await manager.find('/user?id=' + req.user._id + '&token=' + req.session.token)
     return res.render('index', {
         page: './templates/structure/my-account',
@@ -137,7 +171,7 @@ let userManager = async (req, res) => {
 }
 
 let usersManager = async (req, res) => {
-    utils.log('usersManager()...')
+    utils.log('index.usersManager()...')
     let users = await manager.find('/users?token=' + req.session.token)
     return res.render('index', {
         page: './templates/users',
@@ -148,7 +182,7 @@ let usersManager = async (req, res) => {
 }
 
 let customerManager = async (req, res) => {
-    utils.log('customerManager()...')
+    utils.log('index.customerManager()...')
     let customers = await manager.find('/customers?token=' + req.session.token)
     return res.render('index', {
         page: './templates/customers',

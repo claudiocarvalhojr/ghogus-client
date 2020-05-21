@@ -1,23 +1,24 @@
 const fetch = require('node-fetch')
-const utils = require('./utils');
+const utils = require('./utils')
+const soap = require('soap')
 const API_GATEWAY = process.env.API_GATEWAY
 
 let isAuthenticated = (req, res, next) => {
-    utils.log('isAuthenticated()...')
+    utils.log('manager.isAuthenticated()...')
     if (req.isAuthenticated())
         return next()
     res.redirect('/')
 }
 
 var isNotAuthenticated = (req, res, next) => {
-    utils.log('isNotAuthenticated()...')
+    utils.log('manager.isNotAuthenticated()...')
     if (!req.isAuthenticated())
         return next()
     res.redirect('/')
 }
 
 let isTokenValid = async (req, res, next) => {
-    utils.log('isTokenValid()...')
+    utils.log('manager.isTokenValid()...')
     let result = await find('/check?token=' + req.session.token)
     if (result.auth) {
         return next()
@@ -44,7 +45,7 @@ let isTokenValid = async (req, res, next) => {
 }
 
 function renderPageError(res, codeError) {
-    utils.log('problem()...')
+    utils.log('manager.problem()...')
     if (req.isAuthenticated()) {
         return res.render('index', {
             page: './templates/structure/error',
@@ -62,7 +63,7 @@ function renderPageError(res, codeError) {
 }
 
 let checkStatus = (res) => {
-    utils.log('checkStatus(' + res.status + ')...')
+    utils.log('manager.checkStatus(' + res.status + ')...')
     if (res.ok)
         return res
     else {
@@ -72,7 +73,7 @@ let checkStatus = (res) => {
 }
 
 let find = async (url) => {
-    utils.log('find(' + url + ')...')
+    utils.log('manager.find(' + url + ')...')
     return new Promise(resolve => {
         resolve(
             fetch(API_GATEWAY + url)
@@ -85,7 +86,7 @@ let find = async (url) => {
 }
 
 let send = async (method, url, params) => {
-    utils.log('send(' + method + ')...')
+    utils.log('manager.send(' + method + ')...')
     return new Promise(resolve => {
         resolve(
             fetch(API_GATEWAY + url, {
@@ -101,4 +102,69 @@ let send = async (method, url, params) => {
     })
 }
 
-module.exports = { isAuthenticated, isNotAuthenticated, isTokenValid, renderPageError, find, send }
+let freightCalculation = async (postalCode, itemsQty) => {
+    utils.log('manager.freightCalculation(' + postalCode + ',' + itemsQty + ')...')
+    return new Promise((resolve, reject) => {
+        let freight = null
+        if (postalCode != null)
+            postalCode = postalCode.replace('-', '')
+        let url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl'
+        let params = {
+            nCdEmpresa: '',
+            sDsSenha: '',
+            // nCdServico: '04014', // SEDEX
+            nCdServico: '04510', // PAC
+            sCepOrigem: '93950000',
+            sCepDestino: postalCode,
+            nVlPeso: itemsQty,
+            nCdFormato: 3,
+            nVlComprimento: '0',
+            nVlAltura: '0',
+            nVlLargura: '0',
+            nVlDiametro: '0',
+            sCdMaoPropria: 'N',
+            nVlValorDeclarado: '0',
+            sCdAvisoRecebimento: 'N'
+        }
+        soap.createClient(url, (err, client) => {
+            if (err) {
+                console.error('Error 1: ' + err)
+                freight = freightFallback(postalCode, itemsQty)
+                resolve(freight)
+            }
+            else {
+                client.CalcPrecoPrazo(params, (err, result) => {
+                    if (err) {
+                        console.error('Error 2: ' + err)
+                        freight = freightFallback(postalCode, itemsQty)
+                        resolve(freight)
+                    }
+                    else {
+                        // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
+                        freight = {
+                            'isFallback': false,
+                            'postalCode': postalCode,
+                            'value': result.CalcPrecoPrazoResult.Servicos.cServico[0].Valor,
+                            'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega,
+                            'itemsQty': itemsQty
+                        }
+                        resolve(freight)
+                    }
+                })
+            }
+        })
+    })
+}
+
+let freightFallback = (postalCode, itemsQty) => {
+    utils.log('manager.freightFallback(' + postalCode + ',' + itemsQty + ')...')
+    return {
+        'isFallback': true,
+        'postalCode': postalCode,
+        'value': '25,00',
+        'deliveryTime': 10,
+        'itemsQty': itemsQty
+    }
+}
+
+module.exports = { isAuthenticated, isNotAuthenticated, isTokenValid, renderPageError, find, send, freightCalculation }

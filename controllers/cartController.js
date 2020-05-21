@@ -1,7 +1,6 @@
 const manager = require('../manager')
 const utils = require('../utils')
 const mongoose = require('mongoose')
-const soap = require('soap')
 // const Cart = require('../models/cart')
 
 let renderCart = (req, res, cart) => {
@@ -138,7 +137,7 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
         }
         await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
         if (cart[0].freight.postalCode != null)
-            freightCalculation(req, res, cart, true)
+            freight(req, res, cart, true)
         else
             return renderCart(req, res, cart[0])
     }
@@ -152,7 +151,7 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
         }
         await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
         if (cart[0].freight.postalCode != null)
-            freightCalculation(req, res, cart, true)
+            freight(req, res, cart, true)
         else
             return renderCart(req, res, cart[0])
     }
@@ -185,7 +184,7 @@ let updateItemQty = async (req, res) => {
             }
             await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
             if (cart[0].freight.postalCode != null)
-                freightCalculation(req, res, cart, true)
+                freight(req, res, cart, true)
             else
                 return renderCart(req, res, cart[0])
         } else
@@ -211,7 +210,7 @@ let removeItem = async (req, res) => {
             await manager.send('patch', '/cart/pull/' + cart[0]._id, remove)
             cart[0].products.splice(position, 1)
             if (cart[0].freight.postalCode != null)
-                freightCalculation(req, res, cart, true)
+                freight(req, res, cart, true)
             else
                 return renderCart(req, res, cart[0])
         } else
@@ -220,7 +219,7 @@ let removeItem = async (req, res) => {
         renderCart(req, res, null)
 }
 
-let freightCalculation = async (req, res, cart, isRenderCart) => {
+let freight = async (req, res, cart, isRenderCart) => {
     let cartId = null
     let postalCode = null
     if (cart === undefined || cart == null || cart == '') {
@@ -243,18 +242,18 @@ let freightCalculation = async (req, res, cart, isRenderCart) => {
             cart[0].products.forEach(function (product) {
                 itemsQty += product.qty
             })
-            console.log('itemsQty: ' + itemsQty.toString())
         }
-        utils.log('cartController(' + cartId + ').freightCalculation(' + postalCode + ',' + itemsQty + ')...')
-        if (postalCode != null) {
-            if (cart[0].freight.postalCode.localeCompare(postalCode) != 0 || cart[0].freight.isFallback == null || cart[0].freight.isFallback == true || cart[0].freight.itemsQty.localeCompare(itemsQty.toString()) != 0) {
-                let freight = await calculation(postalCode, itemsQty.toString())
+        utils.log('cartController(' + cartId + ').freight(' + postalCode + ',' + itemsQty + ')...')
+        if ((cart[0].freight.postalCode == null && postalCode != null) || (cart[0].freight.postalCode != null && postalCode != null && cart[0].freight.postalCode.localeCompare(postalCode) != 0) || cart[0].freight.isFallback == null || cart[0].freight.isFallback == true || cart[0].freight.itemsQty.localeCompare(itemsQty.toString()) != 0) {
+            if (postalCode != null) {
+                let freight = await manager.freightCalculation(postalCode, itemsQty.toString())
                 let updateCartPostalCode = { 'freight': { 'isFallback': freight.isFallback, 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime, 'itemsQty': freight.itemsQty }, 'changeDate': new Date().toLocaleString() }
                 await manager.send('patch', '/cart/' + cart[0]._id, updateCartPostalCode)
                 cart[0].freight.isFallback = freight.isFallback
                 cart[0].freight.postalCode = postalCode
                 cart[0].freight.value = freight.value
                 cart[0].freight.deliveryTime = freight.deliveryTime
+                cart[0].freight.deliveryTime = freight.itemsQty
             }
         }
         if (isRenderCart)
@@ -263,69 +262,6 @@ let freightCalculation = async (req, res, cart, isRenderCart) => {
         if (isRenderCart)
             renderCart(req, res, null)
     }
-}
-
-let freightFallback = (postalCode, itemsQty) => {
-    return {
-        'isFallback': true,
-        'postalCode': postalCode,
-        'value': '25,00',
-        'deliveryTime': 10,
-        'itemsQty': itemsQty
-    }
-}
-
-let calculation = async (postalCode, itemsQty) => {
-    utils.log('calculation(' + postalCode + ',' + itemsQty + ')...')
-    return new Promise((resolve, reject) => {
-        let freight = null
-        postalCode = postalCode.replace('-', '')
-        let url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl'
-        let params = {
-            nCdEmpresa: '',
-            sDsSenha: '',
-            // nCdServico: '04014', // SEDEX
-            nCdServico: '04510', // PAC
-            sCepOrigem: '93950000',
-            sCepDestino: postalCode,
-            nVlPeso: itemsQty,
-            nCdFormato: 3,
-            nVlComprimento: '0',
-            nVlAltura: '0',
-            nVlLargura: '0',
-            nVlDiametro: '0',
-            sCdMaoPropria: 'N',
-            nVlValorDeclarado: '0',
-            sCdAvisoRecebimento: 'N'
-        }
-        soap.createClient(url, (err, client) => {
-            if (err) {
-                console.error('Error 1: ' + err)
-                freight = freightFallback(postalCode, itemsQty)
-                resolve(freight)
-            }
-            else {
-                client.CalcPrecoPrazo(params, (err, result) => {
-                    if (err) {
-                        console.error('Error 2: ' + err)
-                        freight = freightFallback(postalCode, itemsQty)
-                        resolve(freight)
-                    }
-                    else {
-                        // console.log(result.CalcPrecoPrazoResult.Servicos.cServico)
-                        freight = {
-                            'isFallback': false,
-                            'postalCode': postalCode,
-                            'value': result.CalcPrecoPrazoResult.Servicos.cServico[0].Valor,
-                            'deliveryTime': result.CalcPrecoPrazoResult.Servicos.cServico[0].PrazoEntrega,
-                            'itemsQty': itemsQty
-                        }
-                        resolve(freight)
-                    }
-                })
-            }
-        })
-    })
 }
 
 let findCart = async (req, res) => {
@@ -356,4 +292,4 @@ let findCart = async (req, res) => {
     }
 }
 
-module.exports = { addItem, updateItemQty, removeItem, freightCalculation, findCart }
+module.exports = { addItem, updateItemQty, removeItem, freight, findCart }
