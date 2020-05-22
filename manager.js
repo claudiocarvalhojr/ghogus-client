@@ -116,7 +116,7 @@ let freightCalculation = async (postalCode, itemsQty) => {
             nCdServico: '04510', // PAC
             sCepOrigem: '93950000',
             sCepDestino: postalCode,
-            nVlPeso: itemsQty,
+            nVlPeso: itemsQty.toString(),
             nCdFormato: 3,
             nVlComprimento: '0',
             nVlAltura: '0',
@@ -129,14 +129,14 @@ let freightCalculation = async (postalCode, itemsQty) => {
         soap.createClient(url, (err, client) => {
             if (err) {
                 console.error('Error 1: ' + err)
-                freight = freightFallback(postalCode, itemsQty)
+                freight = fallbackFreight(postalCode, itemsQty)
                 resolve(freight)
             }
             else {
                 client.CalcPrecoPrazo(params, (err, result) => {
                     if (err) {
                         console.error('Error 2: ' + err)
-                        freight = freightFallback(postalCode, itemsQty)
+                        freight = fallbackFreight(postalCode, itemsQty)
                         resolve(freight)
                     }
                     else {
@@ -156,8 +156,8 @@ let freightCalculation = async (postalCode, itemsQty) => {
     })
 }
 
-let freightFallback = (postalCode, itemsQty) => {
-    utils.log('manager.freightFallback(' + postalCode + ',' + itemsQty + ')...')
+let fallbackFreight = (postalCode, itemsQty) => {
+    utils.log('manager.fallbackFreight(' + postalCode + ',' + itemsQty + ')...')
     return {
         'isFallback': true,
         'postalCode': postalCode,

@@ -77,7 +77,9 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
         }
         await manager.send('patch', '/cart/push/' + cartUser[0]._id, addCartItems)
     }
-    if ((cartUser[0].freight.postalCode == null && cartSession[0].freight.postalCode != null) || (cartUser[0].freight.postalCode != null && cartSession[0].freight.postalCode != null && cartUser[0].freight.postalCode.localeCompare(cartSession[0].freight.postalCode) != 0)) {
+    if ((cartUser[0].freight.postalCode != null && cartSession[0].freight.postalCode == null) || 
+        (cartUser[0].freight.postalCode == null && cartSession[0].freight.postalCode != null) || 
+        (cartUser[0].freight.postalCode != null && cartSession[0].freight.postalCode != null && cartUser[0].freight.postalCode.localeCompare(cartSession[0].freight.postalCode) != 0)) {
         utils.log('patch/cart-user/merge/freight...')
         freightCart = true
         let itemsQty = 0
@@ -85,47 +87,41 @@ let mergeCartSession = async (req, res, cartUser, cartSession) => {
             cartUser[0].products.forEach(function (product) {
                 itemsQty += product.qty
             })
-            console.log('itemsQty: ' + itemsQty.toString() + ' / CEP: ' + cartUser[0].freight.postalCode)
         }
-       let updateFreightCart = {
+        let postalCode = null
+        if (cartUser[0].freight.postalCode != null && cartSession[0].freight.postalCode == null)
+            postalCode = cartUser[0].freight.postalCode
+        else
+            postalCode = cartSession[0].freight.postalCode
+        let freight = await manager.freightCalculation(postalCode, itemsQty)
+        let updateCartFreight = {
             'freight': {
-                'isFallback': cartSession[0].freight.isFallback,
-                'postalCode': cartSession[0].freight.postalCode,
-                'value': cartSession[0].freight.value,
-                'deliveryTime': cartSession[0].freight.deliveryTime,
-                'itemsQty': itemsQty
+                'isFallback': freight.isFallback,
+                'postalCode': freight.postalCode,
+                'value': freight.value,
+                'deliveryTime': freight.deliveryTime,
+                'itemsQty': freight.itemsQty
             },
             'changeDate': new Date().toLocaleString()
         }
-        await manager.send('patch', '/cart/' + cartUser[0]._id, updateFreightCart)
-        cartUser[0].freight.isFallback = cartSession[0].freight.isFallback
-        cartUser[0].freight.postalCode = cartSession[0].postalCode
-        cartUser[0].freight.value = cartSession[0].freight.value
-        cartUser[0].freight.deliveryTime = cartSession[0].freight.deliveryTime
-        cartUser[0].freight.itemsQty = itemsQty
+        await manager.send('patch', '/cart/' + cartUser[0]._id, updateCartFreight)
+        cartUser[0].freight = freight
     }
     if (updateItemQty || addItem || freightCart) {
         utils.log('patch/cart-session/disable...')
         let isEnabled = { 'isEnabled': false }
         await manager.send('patch', '/cart/' + cartSession[0]._id, isEnabled)
         res.clearCookie('sessionId')
-        cartController.freight(req, res, cartUser, true)
     }
-    // res.redirect('/cart')
+    cartController.renderCart(req, res, cartUser[0])
 }
 
 let mergeCartUser = async (req, res, cartSession) => {
     utils.log('index.mergeCartUser(' + cartSession[0]._id + ',' + req.user._id + ')...')
-    let updateUser = {
-        'customer': {
-            '_id': req.user._id
-        },
-        'changeDate': new Date().toLocaleString()
-    }
+    let updateUser = { 'customer': { '_id': req.user._id }, 'changeDate': new Date().toLocaleString() }
     await manager.send('patch', '/cart/' + cartSession[0]._id, updateUser)
     res.clearCookie('sessionId')
-    // cartController.freight(req, res, cartUser, true)
-    res.redirect('/cart')
+    cartController.renderCart(req, res, cartSession[0])
 }
 
 let loginAPIManager = async (req, res) => {

@@ -102,7 +102,8 @@ let addItem = async (req, res) => {
                 'isFallback': null,
                 'postalCode': null,
                 'value': '0,0',
-                'deliveryTime': 0
+                'deliveryTime': 0,
+                'itemsQty': 1
             },
             'customer': customer,
             'products': [itemCart(product)],
@@ -137,7 +138,7 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
         }
         await manager.send('patch', '/cart/push/' + cart[0]._id, newCartItem)
         if (cart[0].freight.postalCode != null)
-            freight(req, res, cart, true)
+            updateCartFreight(req, res, cart)
         else
             return renderCart(req, res, cart[0])
     }
@@ -151,7 +152,7 @@ let addItemOrUpdateItemQty = async (req, res, cart) => {
         }
         await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
         if (cart[0].freight.postalCode != null)
-            freight(req, res, cart, true)
+            updateCartFreight(req, res, cart)
         else
             return renderCart(req, res, cart[0])
     }
@@ -184,12 +185,14 @@ let updateItemQty = async (req, res) => {
             }
             await manager.send('patch', '/cart/' + cart[0]._id, updateItemQty)
             if (cart[0].freight.postalCode != null)
-                freight(req, res, cart, true)
+                updateCartFreight(req, res, cart)
             else
-                return renderCart(req, res, cart[0])
-        } else
-            return renderCart(req, res, cart[0])
-    } else
+                renderCart(req, res, cart[0])
+        }
+        else
+            renderCart(req, res, cart[0])
+    }
+    else
         renderCart(req, res, null)
 }
 
@@ -210,32 +213,26 @@ let removeItem = async (req, res) => {
             await manager.send('patch', '/cart/pull/' + cart[0]._id, remove)
             cart[0].products.splice(position, 1)
             if (cart[0].freight.postalCode != null)
-                freight(req, res, cart, true)
+                updateCartFreight(req, res, cart)
             else
-                return renderCart(req, res, cart[0])
-        } else
-            return renderCart(req, res, cart[0])
-    } else
+                renderCart(req, res, cart[0])
+        }
+        else
+            renderCart(req, res, cart[0])
+    }
+    else
         renderCart(req, res, null)
 }
 
-let freight = async (req, res, cart, isRenderCart) => {
-    let cartId = null
-    let postalCode = null
-    if (cart === undefined || cart == null || cart == '') {
-        cartId = req.body.cartId
-        postalCode = req.body.postalCode
-        if (req.isAuthenticated())
-            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
-        else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
-            cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
-        // cart = await manager.find('/cart/' + cartId)
-    }
-    else {
-        cartId = cart[0]._id
-        // if (cart[0].freight.postalCode != null)
-        postalCode = cart[0].freight.postalCode
-    }
+let cartFreight = async (req, res) => {
+    let cart = null
+    let cartId = req.body.cartId
+    let postalCode = req.body.postalCode
+    if (req.isAuthenticated())
+        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
+    else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
+        cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'sessionId': req.cookies.sessionId, 'isEnabled': true } }))
+    // cart = await manager.find('/cart/' + cartId)
     if (cart !== undefined && cart != null && cart != '') {
         let itemsQty = 0
         if (cart[0].products.length > 0) {
@@ -243,25 +240,68 @@ let freight = async (req, res, cart, isRenderCart) => {
                 itemsQty += product.qty
             })
         }
-        utils.log('cartController(' + cartId + ').freight(' + postalCode + ',' + itemsQty + ')...')
-        if ((cart[0].freight.postalCode == null && postalCode != null) || (cart[0].freight.postalCode != null && postalCode != null && cart[0].freight.postalCode.localeCompare(postalCode) != 0) || cart[0].freight.isFallback == null || cart[0].freight.isFallback == true || cart[0].freight.itemsQty.localeCompare(itemsQty.toString()) != 0) {
-            if (postalCode != null) {
-                let freight = await manager.freightCalculation(postalCode, itemsQty.toString())
-                let updateCartPostalCode = { 'freight': { 'isFallback': freight.isFallback, 'postalCode': postalCode, 'value': freight.value, 'deliveryTime': freight.deliveryTime, 'itemsQty': freight.itemsQty }, 'changeDate': new Date().toLocaleString() }
-                await manager.send('patch', '/cart/' + cart[0]._id, updateCartPostalCode)
-                cart[0].freight.isFallback = freight.isFallback
-                cart[0].freight.postalCode = postalCode
-                cart[0].freight.value = freight.value
-                cart[0].freight.deliveryTime = freight.deliveryTime
-                cart[0].freight.deliveryTime = freight.itemsQty
+        utils.log('cartController(' + cartId + ').cartFreight(' + postalCode + ',' + itemsQty + ')...')
+        if ((cart[0].freight.isFallback == null && postalCode != null) ||
+            (cart[0].freight.isFallback == true && postalCode != null) ||
+            (cart[0].freight.postalCode == null && postalCode != null) ||
+            (cart[0].freight.postalCode != null && postalCode != null && cart[0].freight.itemsQty != itemsQty) ||
+            (cart[0].freight.postalCode != null && postalCode != null && cart[0].freight.postalCode.localeCompare(postalCode) != 0)) {
+            let freight = await manager.freightCalculation(postalCode, itemsQty)
+            let updateCartFreight = {
+                'freight': {
+                    'isFallback': freight.isFallback,
+                    'postalCode': freight.postalCode,
+                    'value': freight.value,
+                    'deliveryTime': freight.deliveryTime,
+                    'itemsQty': freight.itemsQty
+                },
+                'changeDate': new Date().toLocaleString()
             }
+            await manager.send('patch', '/cart/' + cart[0]._id, updateCartFreight)
+            cart[0].freight = freight
+            renderCart(req, res, cart[0])
         }
-        if (isRenderCart)
-            return renderCart(req, res, cart[0])
-    } else {
-        if (isRenderCart)
-            renderCart(req, res, null)
+        else
+            renderCart(req, res, cart[0])
     }
+    else
+        renderCart(req, res, null)
+}
+
+let updateCartFreight = async (req, res, cart) => {
+    let cartId = cart[0]._id
+    let postalCode = cart[0].freight.postalCode
+    if (cart !== undefined && cart != null && cart != '') {
+        let itemsQty = 0
+        if (cart[0].products.length > 0) {
+            cart[0].products.forEach(function (product) {
+                itemsQty += product.qty
+            })
+        }
+        utils.log('cartController(' + cartId + ').updateCartFreight(' + postalCode + ',' + itemsQty + ')...')
+        if ((postalCode != null && cart[0].freight.isFallback == null) || 
+            (postalCode != null && cart[0].freight.isFallback == true) || 
+            (postalCode != null && cart[0].freight.itemsQty != itemsQty)) {
+            let freight = await manager.freightCalculation(postalCode, itemsQty)
+            let updateCartPostalCode = {
+                'freight': {
+                    'isFallback': freight.isFallback, 
+                    'postalCode': freight.postalCode, 
+                    'value': freight.value, 
+                    'deliveryTime': freight.deliveryTime, 
+                    'itemsQty': freight.itemsQty 
+                }, 
+                'changeDate': new Date().toLocaleString() 
+            }
+            await manager.send('patch', '/cart/' + cart[0]._id, updateCartPostalCode)
+            cart[0].freight = freight
+            renderCart(req, res, cart[0])
+        }
+        else
+            renderCart(req, res, cart[0])
+    }
+    else
+        renderCart(req, res, null)
 }
 
 let findCart = async (req, res) => {
@@ -292,4 +332,4 @@ let findCart = async (req, res) => {
     }
 }
 
-module.exports = { addItem, updateItemQty, removeItem, freight, findCart }
+module.exports = { renderCart, addItem, updateItemQty, removeItem, cartFreight, findCart }

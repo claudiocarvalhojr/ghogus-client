@@ -53,7 +53,7 @@ $(document).ready(function () {
     //     $('#btnSiteSearch').css('width', '75px')
     // });
 
-    $('#btnFreightCalculation').on('click', function() {
+    $('#btnCartFreightCalculation').on('click', function() {
         // if ($('#postalCode').is(':empty')) {
         // if ($('#postalCode').val() === '') {
         //     // $('#postalCode').css('color','red')
@@ -63,7 +63,7 @@ $(document).ready(function () {
         //     document.forms['formFreightCalculationCart'].submit();
         // }
         if ($('#postalCode').val() !== '') {
-            document.forms['formFreightCalculationCart'].submit();
+            document.forms['formCartFreightCalculation'].submit();
         }
     })
 

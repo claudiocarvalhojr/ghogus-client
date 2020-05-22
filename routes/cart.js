@@ -25,7 +25,7 @@ module.exports = () => {
 
         /* CALC FREIGHT */
         else if (req.body.action.localeCompare('freight') == 0)
-            cartController.freight(req, res, null, true)
+            cartController.cartFreight(req, res, null, true)
 
     })
 
