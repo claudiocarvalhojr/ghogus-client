@@ -227,7 +227,7 @@ let removeItem = async (req, res) => {
 let cartFreight = async (req, res) => {
     let cart = null
     let cartId = req.body.cartId
-    let postalCode = req.body.postalCode
+    let postalCode = req.body.postalCode.replace('-', '')
     if (req.isAuthenticated())
         cart = await manager.find('/cart/last/' + JSON.stringify({ values: { 'customer._id': req.user._id, 'isEnabled': true } }))
     else if (!req.isAuthenticated() && req.cookies.sessionId !== undefined)
@@ -240,6 +240,13 @@ let cartFreight = async (req, res) => {
                 itemsQty += product.qty
             })
         }
+
+        console.log('postalCode (cart): ' + cart[0].freight.postalCode)
+        console.log('postalCode (atual): ' + postalCode)
+        console.log('itemsQty (cart): ' + cart[0].freight.itemsQty)
+        console.log('itemsQty (atual): ' + itemsQty)
+        console.log('cart[0].freight.isFallback: ' + cart[0].freight.isFallback)
+
         utils.log('cartController(' + cartId + ').cartFreight(' + postalCode + ',' + itemsQty + ')...')
         if ((cart[0].freight.isFallback == null && postalCode != null) ||
             (cart[0].freight.isFallback == true && postalCode != null) ||
